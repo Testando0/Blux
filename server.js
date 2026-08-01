@@ -8,13 +8,13 @@ dotenv.config();
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const app = express();
 
-const MODELS = ['mistral-small-latest','mistral-medium-latest','mistral-large-latest','open-mistral-nemo','ministral-8b-latest'];
+const MODEL = 'ministral-3b-2512'; // único modelo permitido
 const MISTRAL_URL = 'https://api.mistral.ai/v1/chat/completions';
 
 app.use(express.json({ limit: '1mb' }));
 app.use(express.static(path.join(__dirname, 'public')));
 
-// código de recarga — confere no codigos.json (relê a cada chamada, edição a quente)
+// código de recarga — confere no codigos.json (edição a quente)
 app.post('/api/ativar', (req, res) => {
   const { codigo } = req.body || {};
   let lista;
@@ -28,10 +28,10 @@ app.post('/api/ativar', (req, res) => {
   res.json({ dias: Math.max(1, +c.dias || 1), nome: c.nome || '' });
 });
 
-// chat — system prompt vem do system.txt; a chave da API fica só aqui no servidor
+// chat — system prompt vem do system.txt; chave e modelo ficam só aqui
 app.post('/api/chat', async (req, res) => {
   if (!process.env.MISTRAL_API_KEY) return res.status(500).json({ error: 'MISTRAL_API_KEY não configurada no .env' });
-  const { messages, model, temperature } = req.body || {};
+  const { messages } = req.body || {};
   if (!Array.isArray(messages) || !messages.length) return res.status(400).json({ error: 'messages inválido' });
 
   let system = '';
@@ -47,13 +47,7 @@ app.post('/api/chat', async (req, res) => {
     const r = await fetch(MISTRAL_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + process.env.MISTRAL_API_KEY },
-      body: JSON.stringify({
-        model: MODELS.includes(model) ? model : 'mistral-small-latest',
-        messages: full,
-        temperature: Math.min(1.5, Math.max(0, +temperature || 0.95)),
-        max_tokens: 1400,
-        stream: true
-      })
+      body: JSON.stringify({ model: MODEL, messages: full, temperature: 0.95, max_tokens: 1400, stream: true })
     });
     if (!r.ok) {
       const t = await r.text();
@@ -76,6 +70,6 @@ app.post('/api/chat', async (req, res) => {
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
-  console.log('\n  LUX +18 rodando → http://localhost:' + PORT);
+  console.log('\n  BLUX +18 rodando → http://localhost:' + PORT + '  (modelo: ' + MODEL + ')');
   if (!process.env.MISTRAL_API_KEY) console.warn('  ⚠ Defina MISTRAL_API_KEY no .env');
 });
