@@ -26,6 +26,8 @@
   --ok:#6fcf97;
   --err:#e57373;
   --body:'Inter',-apple-system,BlinkMacSystemFont,sans-serif;
+  --imgF:'https://i.ibb.co/BVhJTHdt/1004005077.jpg';
+  --imgM:'https://i.ibb.co/FkQbkMG9/1004005079.jpg';
 }
 *{margin:0;padding:0;box-sizing:border-box}
 html,body{height:100%}
@@ -40,10 +42,9 @@ button{font-family:inherit;cursor:pointer;-webkit-tap-highlight-color:transparen
 
 @keyframes rise{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
 @keyframes shake{20%,60%{transform:translateX(-6px)}40%,80%{transform:translateX(6px)}}
-@keyframes breathe{50%{transform:scale(1.05)}}
+@keyframes breathe{50%{transform:scale(1.04)}}
 @keyframes tb{30%{transform:translateY(-4px);opacity:.3}}
 @keyframes blink{50%{opacity:.5}}
-@keyframes spin{to{transform:rotate(360deg)}}
 
 /* ── GATE (tela inicial / código) ── */
 #gate{position:fixed;inset:0;z-index:50;display:flex;align-items:center;justify-content:center;overflow-y:auto;transition:opacity .4s ease,transform .5s cubic-bezier(.7,0,.3,1);background:var(--bg)}
@@ -51,7 +52,7 @@ button{font-family:inherit;cursor:pointer;-webkit-tap-highlight-color:transparen
 .g-in{text-align:center;padding:32px 22px;max-width:420px;width:100%;animation:rise .5s cubic-bezier(.2,.8,.3,1) both}
 .g-in.err{animation:shake .4s}
 .over{font:500 11px var(--body);letter-spacing:.28em;text-transform:uppercase;color:var(--dim)}
-.g-orb{width:58px;height:58px;margin:22px auto 16px;border-radius:14px;background:linear-gradient(135deg,var(--rose),var(--wine));box-shadow:0 10px 30px rgba(212,85,122,.35);animation:breathe 3.5s ease-in-out infinite;display:flex;align-items:center;justify-content:center;font-size:26px;color:#fff}
+.g-orb{width:58px;height:58px;margin:22px auto 16px;border-radius:14px;background:linear-gradient(135deg,var(--rose),var(--wine));box-shadow:0 10px 30px rgba(212,85,122,.35);animation:breathe 3.5s ease-in-out infinite;display:flex;align-items:center;justify-content:center;font-size:26px;color:#fff;overflow:hidden}
 .mark{font:600 40px/1.1 var(--body);letter-spacing:-.02em}
 .age{display:inline-block;font:600 10px var(--body);letter-spacing:.08em;color:#fff;background:var(--rose);padding:3px 7px;border-radius:6px;margin-left:8px;vertical-align:super}
 #gateMsg{color:var(--mut);margin:14px auto 0;font:400 14px var(--body);min-height:20px;max-width:300px}
@@ -74,9 +75,10 @@ button{font-family:inherit;cursor:pointer;-webkit-tap-highlight-color:transparen
 .gp-box h2{font:600 26px/1.2 var(--body);letter-spacing:-.01em;margin:14px 0 6px}
 .gp-box p{color:var(--mut);font:400 14px var(--body);margin-bottom:26px}
 .gp-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
-.gp-card{padding:24px 16px;border-radius:16px;border:1px solid var(--line);background:var(--panel);transition:.18s;display:flex;flex-direction:column;align-items:center;gap:10px;color:var(--text)}
+.gp-card{padding:24px 16px;border-radius:16px;border:1px solid var(--line);background:var(--panel);transition:.18s;display:flex;flex-direction:column;align-items:center;gap:12px;color:var(--text)}
 .gp-card:hover{background:var(--panel2);border-color:var(--rose);transform:translateY(-2px);box-shadow:0 10px 30px rgba(0,0,0,.5)}
-.gp-card .gp-emoji{font-size:40px;line-height:1}
+.gp-avatar{width:72px;height:72px;border-radius:50%;overflow:hidden;border:2px solid var(--line2);box-shadow:0 6px 20px rgba(0,0,0,.5)}
+.gp-avatar img{width:100%;height:100%;object-fit:cover;display:block}
 .gp-card .gp-title{font:600 16px var(--body)}
 .gp-card .gp-sub{font:400 12px var(--dim)}
 @media(max-width:400px){.gp-grid{grid-template-columns:1fr}}
@@ -84,18 +86,25 @@ button{font-family:inherit;cursor:pointer;-webkit-tap-highlight-color:transparen
 /* ── APP ── */
 #app{position:relative;z-index:2;display:flex;flex-direction:column;height:100dvh}
 header{display:flex;align-items:center;gap:10px;padding:12px 16px;border-bottom:1px solid var(--line);background:var(--bg)}
-.hmark{font:600 18px var(--body);letter-spacing:-.01em}
-.hmark .age{font-size:8px;margin-left:5px;padding:2px 5px}
-.hmark .gp{font-size:11px;margin-left:8px;padding:2px 7px;border-radius:5px;font-weight:500;vertical-align:middle}
-.hmark .gp.M{background:rgba(90,140,220,.15);color:#7aa8e8}
-.hmark .gp.F{background:rgba(212,85,122,.18);color:var(--rose2)}
+.hmark{font:600 18px var(--body);letter-spacing:-.01em;display:flex;align-items:center;gap:8px}
+.hmark .age{font-size:8px;margin-left:0;padding:2px 5px}
+
+/* chip de gênero no header com foto */
+.hmark .gp{display:inline-flex;align-items:center;gap:6px;padding:3px 10px 3px 3px;border-radius:20px;border:1px solid var(--line2);background:var(--panel);font-size:12px;font-weight:500;vertical-align:middle}
+.hmark .gp img{width:22px;height:22px;border-radius:50%;object-fit:cover;display:block}
+.hmark .gp.M{color:#7aa8e8;border-color:rgba(90,140,220,.3)}
+.hmark .gp.F{color:var(--rose2);border-color:rgba(212,85,122,.35)}
+
 .ic{width:36px;height:36px;border-radius:9px;border:1px solid var(--line);color:var(--mut);display:flex;align-items:center;justify-content:center;transition:.18s}
 .ic:hover{color:var(--text);border-color:var(--line2);background:var(--panel)}
 .dchip{margin-left:auto;font:500 11px var(--body);letter-spacing:.04em;color:var(--gold);border:1px solid rgba(201,169,106,.3);background:rgba(201,169,106,.08);padding:5px 10px;border-radius:8px;transition:.2s}
 .dchip.warn{color:var(--err);border-color:rgba(229,115,115,.4);background:rgba(229,115,115,.08);animation:blink 2s infinite}
 #chatWrap{flex:1;overflow-y:auto;overscroll-behavior:contain}
 #empty{min-height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:32px 22px;text-align:center}
-.simple-orb{width:56px;height:56px;border-radius:14px;background:linear-gradient(135deg,var(--rose),var(--wine));box-shadow:0 10px 30px rgba(212,85,122,.35);animation:breathe 4s ease-in-out infinite;margin-bottom:18px;display:flex;align-items:center;justify-content:center;color:#fff;font-size:24px}
+
+/* orbe da tela vazia com foto redonda */
+.simple-orb{width:72px;height:72px;border-radius:50%;background:linear-gradient(135deg,var(--rose),var(--wine));box-shadow:0 10px 30px rgba(212,85,122,.35);animation:breathe 4s ease-in-out infinite;margin-bottom:18px;display:flex;align-items:center;justify-content:center;overflow:hidden;border:2px solid var(--line2)}
+.simple-orb img{width:100%;height:100%;object-fit:cover;display:block}
 #empty .over{margin-bottom:10px}
 #empty h2{font:500 clamp(26px,7vw,36px)/1.2 var(--body);letter-spacing:-.015em;margin-bottom:8px}
 #empty>p{color:var(--mut);font:400 14.5px/1.55 var(--body);max-width:300px}
@@ -106,7 +115,11 @@ header{display:flex;align-items:center;gap:10px;padding:12px 16px;border-bottom:
 .msg{animation:rise .3s cubic-bezier(.2,.8,.3,1) both;display:flex;gap:10px}
 .msg.user{justify-content:flex-end}
 .msg.assistant{justify-content:flex-start}
-.avatar{width:30px;height:30px;border-radius:8px;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:14px;color:#fff;background:linear-gradient(135deg,var(--rose),var(--wine))}
+
+/* avatar da mensagem — foto encaixada, estilo ChatGPT */
+.avatar{width:32px;height:32px;border-radius:50%;flex-shrink:0;overflow:hidden;border:1px solid var(--line2);background:var(--panel);box-shadow:0 2px 6px rgba(0,0,0,.4)}
+.avatar img{width:100%;height:100%;object-fit:cover;display:block}
+
 .bub{max-width:82%;padding:12px 16px;border-radius:16px;font:400 15px/1.55 var(--body);white-space:pre-wrap;word-break:break-word}
 .msg.user .bub{background:var(--panel3);color:var(--text);border-bottom-right-radius:4px}
 .msg.assistant .bub{background:transparent;color:var(--text);border-bottom-left-radius:4px;padding-left:0;padding-right:0}
@@ -181,12 +194,12 @@ header{display:flex;align-items:center;gap:10px;padding:12px 16px;border-bottom:
     <p>Qual versão você quer como companhia?</p>
     <div class="gp-grid">
       <button class="gp-card" data-gender="M">
-        <div class="gp-emoji">♂️</div>
+        <div class="gp-avatar"><img src="https://i.ibb.co/FkQbkMG9/1004005079.jpg" alt="Blux Masculino"></div>
         <div class="gp-title">Blux Masculino</div>
         <div class="gp-sub">Personalidade masculina</div>
       </button>
       <button class="gp-card" data-gender="F">
-        <div class="gp-emoji">♀️</div>
+        <div class="gp-avatar"><img src="https://i.ibb.co/BVhJTHdt/1004005077.jpg" alt="Blux Feminino"></div>
         <div class="gp-title">Blux Feminino</div>
         <div class="gp-sub">Personalidade feminina</div>
       </button>
@@ -203,7 +216,7 @@ header{display:flex;align-items:center;gap:10px;padding:12px 16px;border-bottom:
   </header>
   <div id="chatWrap">
     <div id="empty">
-      <div class="simple-orb" id="emptyOrb">💬</div>
+      <div class="simple-orb" id="emptyOrb"></div>
       <p class="over">blux · companhia sem filtros</p>
       <h2 id="greet"></h2>
       <p>Sua companhia +18, sem julgamento. O que vamos aprontar hoje?</p>
@@ -240,6 +253,14 @@ const store={
   del:(k)=>localStorage.removeItem('blux_'+k)
 };
 const DIA=864e5;
+
+// URLs das imagens de perfil (feminino / masculino)
+const IMG = {
+  F: 'https://i.ibb.co/BVhJTHdt/1004005077.jpg',
+  M: 'https://i.ibb.co/FkQbkMG9/1004005079.jpg'
+};
+const LABEL = { F: 'Feminino', M: 'Masculino' };
+
 const SVG={
   send:'<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>',
   stop:'<svg viewBox="0 0 24 24" width="13" height="13"><rect x="5" y="5" width="14" height="14" rx="3" fill="currentColor"/></svg>',
@@ -259,6 +280,19 @@ const recarga=()=>store.get('recarga',null);
 const genero=()=>store.get('genero',null);
 const diasRest=()=>{const r=recarga();return r?Math.max(0,Math.ceil((r.ativadoEm+r.dias*DIA-Date.now())/DIA)):0};
 
+// Aplica a foto no chip do header e no orbe da tela vazia
+function aplicarFotoUI(){
+  const g = genero() || 'F';
+  const url = IMG[g];
+
+  const gc = $('#genderChip');
+  gc.className = 'gp ' + g;
+  gc.innerHTML = '<img src="'+url+'" alt=""><span>'+LABEL[g]+'</span>';
+
+  const orb = $('#emptyOrb');
+  orb.innerHTML = '<img src="'+url+'" alt="">';
+}
+
 // ── Fluxo de entrada ──
 function entrarApp(){
   $('#gate').classList.add('ok');
@@ -268,11 +302,7 @@ function entrarApp(){
     $('#app').classList.remove('hidden');
     const d=diasRest(),c=$('#daysChip');
     c.textContent='⏳ '+d+'d';c.classList.toggle('warn',d<=1);
-    const g=genero();
-    const gc=$('#genderChip');
-    gc.textContent=g==='M'?'♂ Masculino':g==='F'?'♀ Feminino':'';
-    gc.classList.remove('M','F');if(g)gc.classList.add(g);
-    $('#emptyOrb').textContent=g==='M'?'♂️':'♀️';
+    aplicarFotoUI();
     renderAll();uiStream();$('#ta').focus();
   },450);
 }
@@ -315,7 +345,6 @@ async function confere(){
     const r=await fetch('/api/ativar',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({codigo:pin})});
     const j=await r.json();
     if(r.ok&&j.dias){
-      // Não salva recarga ainda — só depois de escolher gênero
       $('#gateMsg').textContent='Código ativado ✓ '+j.dias+' dia'+(j.dias===1?'':'s')+' liberado'+(j.dias===1?'':'s');
       $('.g-in').classList.add('okk');
       setTimeout(()=>mostrarGenderPick(j.dias),600);
@@ -364,13 +393,16 @@ function md(t){if(!t)return'';const pre=[];
 const cur=()=>S.chats.find(c=>c.id===S.cur);
 function ensureChat(){if(!cur()){S.chats.unshift({id:Date.now().toString(36)+Math.random().toString(36).slice(2,6),title:'Nova conversa',messages:[],ts:Date.now()});S.cur=S.chats[0].id}}
 function saveChats(){S.chats=S.chats.slice(0,30);store.set('chats',S.chats)}
+
 function buildNode(m,last){
   const d=document.createElement('div');
   if(m.role==='user'){d.className='msg user';d.innerHTML='<div class="bub">'+esc(m.content)+'</div>';return d}
   d.className='msg assistant';
-  const g=genero();
-  const emoji=g==='M'?'♂️':'♀️';
-  d.innerHTML='<div class="avatar">'+emoji+'</div><div class="bub"><div class="a-content">'+
+  const g = genero() || 'F';
+  const url = IMG[g];
+  d.innerHTML=
+    '<div class="avatar"><img src="'+url+'" alt="BLUX"></div>'+
+    '<div class="bub"><div class="a-content">'+
     (m.pending?'<span class="tdots"><i></i><i></i><i></i></span>':md(m.content))+
     '</div><div class="a-actions"><button data-a="copy" title="Copiar">'+SVG.copy+'</button>'+
     (last?'<button data-a="regen" title="Gerar de novo">'+SVG.regen+'</button>':'')+'</div></div>';
@@ -407,7 +439,7 @@ async function stream(){
   const el=node.querySelector('.a-content');
   S.streaming=true;uiStream();S.abort=new AbortController();
   const hist=c.messages.filter(x=>x.content&&x!==m).map(x=>({role:x.role,content:x.content}));
-  const gender=genero()||'M';
+  const gender=genero()||'F';
   let apiErr=null;
   try{
     const r=await fetch('/api/chat',{method:'POST',signal:S.abort.signal,
@@ -470,4 +502,4 @@ ta.placeholder=['Diga algo no meu ouvido…','O que vamos aprontar hoje?','Sem v
 boot();
 </script>
 </body>
-</html>
+  </html>
