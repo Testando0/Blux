@@ -3,124 +3,164 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="theme-color" content="#150f18">
+<meta name="theme-color" content="#0d0d0d">
 <title>BLUX +18</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300..700;1,9..144,300..700&family=Outfit:wght@300..700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 <style>
-:root{--bg:#0f0a12;--panel:#1a1320;--panel2:#251a2a;--line:#2a1f30;--line2:#3d2d45;--text:#f6eef2;--mut:#b6a6b8;--dim:#7f6f84;
---rose:#ff5c7a;--rose2:#ff8fa3;--wine:#a4133c;--gold:#e9c077;--ok:#7ee0a3;--disp:'Fraunces',serif;--body:'Outfit',sans-serif}
+:root{
+  --bg:#0d0d0d;
+  --panel:#1a1a1a;
+  --panel2:#242424;
+  --panel3:#2f2f2f;
+  --line:#262626;
+  --line2:#333;
+  --text:#ececec;
+  --mut:#b4b4b4;
+  --dim:#6f6f6f;
+  --rose:#d4557a;
+  --rose2:#e98fa8;
+  --wine:#8c2a4a;
+  --gold:#c9a96a;
+  --ok:#6fcf97;
+  --err:#e57373;
+  --body:'Inter',-apple-system,BlinkMacSystemFont,sans-serif;
+}
 *{margin:0;padding:0;box-sizing:border-box}
 html,body{height:100%}
 body{color:var(--text);font-family:var(--body);overflow:hidden;-webkit-font-smoothing:antialiased;background:var(--bg)}
-::selection{background:rgba(255,92,122,.3)}
-::-webkit-scrollbar{width:8px}::-webkit-scrollbar-thumb{background:var(--line2);border-radius:8px}
-button{font-family:inherit;cursor:pointer;-webkit-tap-highlight-color:transparent}
+::selection{background:rgba(212,85,122,.35)}
+::-webkit-scrollbar{width:8px}::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--line2);border-radius:8px}
+::-webkit-scrollbar-thumb:hover{background:#444}
+button{font-family:inherit;cursor:pointer;-webkit-tap-highlight-color:transparent;border:none;background:none;color:inherit}
 .hidden{display:none!important}
 .fine{font-size:11px;color:var(--dim);line-height:1.5}
 
-@keyframes rise{from{opacity:0;transform:translateY(12px)}}
-@keyframes shake{20%,60%{transform:translateX(-8px)}40%,80%{transform:translateX(8px)}}
-@keyframes breathe{50%{transform:scale(1.04)}}
-@keyframes spin{to{transform:rotate(360deg)}}
-@keyframes tb{30%{transform:translateY(-6px);opacity:.4}}
+@keyframes rise{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+@keyframes shake{20%,60%{transform:translateX(-6px)}40%,80%{transform:translateX(6px)}}
+@keyframes breathe{50%{transform:scale(1.05)}}
+@keyframes tb{30%{transform:translateY(-4px);opacity:.3}}
 @keyframes blink{50%{opacity:.5}}
+@keyframes spin{to{transform:rotate(360deg)}}
 
-#gate{position:fixed;inset:0;z-index:50;display:flex;align-items:center;justify-content:center;overflow-y:auto;transition:transform .5s cubic-bezier(.7,0,.3,1)}
-#gate.ok{transform:translateY(-102%)}
-.g-in{text-align:center;padding:32px 20px;animation:rise .5s cubic-bezier(.2,.8,.3,1) both}
+/* ── GATE (tela inicial / código) ── */
+#gate{position:fixed;inset:0;z-index:50;display:flex;align-items:center;justify-content:center;overflow-y:auto;transition:opacity .4s ease,transform .5s cubic-bezier(.7,0,.3,1);background:var(--bg)}
+#gate.ok{opacity:0;transform:translateY(-100%);pointer-events:none}
+.g-in{text-align:center;padding:32px 22px;max-width:420px;width:100%;animation:rise .5s cubic-bezier(.2,.8,.3,1) both}
 .g-in.err{animation:shake .4s}
-.over{font:600 11px var(--body);letter-spacing:.3em;text-transform:uppercase;color:var(--gold)}
-.g-orb{width:56px;height:56px;margin:20px auto 12px;border-radius:50%;
-background:linear-gradient(135deg,var(--rose) 0%,var(--wine) 100%);
-box-shadow:0 8px 32px rgba(255,92,122,.35);animation:breathe 3.5s ease-in-out infinite}
-.mark{font:italic 600 58px/1 var(--disp);letter-spacing:-.02em}
-.age{display:inline-block;font:700 10px var(--body);letter-spacing:.08em;color:#fff;background:linear-gradient(160deg,var(--rose),var(--wine));padding:4px 8px;border-radius:6px;margin-left:8px;vertical-align:super}
-#gateMsg{color:var(--mut);margin:12px auto 0;font:400 14px var(--body);min-height:20px;max-width:280px}
-.dots{display:flex;gap:16px;justify-content:center;margin:24px 0 6px}
-.dots i{width:12px;height:12px;border-radius:50%;border:1.5px solid var(--dim);transition:.18s cubic-bezier(.3,1.5,.4,1)}
-.dots i.on{background:var(--rose);border-color:var(--rose);box-shadow:0 0 12px rgba(255,92,122,.8);transform:scale(1.3)}
-.g-in.err .dots i{background:var(--rose2);border-color:var(--rose2)}
-.g-in.okk .dots i{background:var(--ok);border-color:var(--ok);box-shadow:0 0 12px rgba(126,224,163,.7)}
-.pad{display:grid;grid-template-columns:repeat(3,72px);gap:14px;justify-content:center;margin-top:20px}
-.pad button{height:72px;border-radius:50%;border:1px solid var(--line2);color:var(--text);font:500 24px var(--disp);transition:.13s;background:var(--panel)}
-.pad button:active{transform:scale(.88);border-color:var(--rose);background:rgba(255,92,122,.15);color:var(--rose2)}
+.over{font:500 11px var(--body);letter-spacing:.28em;text-transform:uppercase;color:var(--dim)}
+.g-orb{width:58px;height:58px;margin:22px auto 16px;border-radius:14px;background:linear-gradient(135deg,var(--rose),var(--wine));box-shadow:0 10px 30px rgba(212,85,122,.35);animation:breathe 3.5s ease-in-out infinite;display:flex;align-items:center;justify-content:center;font-size:26px;color:#fff}
+.mark{font:600 40px/1.1 var(--body);letter-spacing:-.02em}
+.age{display:inline-block;font:600 10px var(--body);letter-spacing:.08em;color:#fff;background:var(--rose);padding:3px 7px;border-radius:6px;margin-left:8px;vertical-align:super}
+#gateMsg{color:var(--mut);margin:14px auto 0;font:400 14px var(--body);min-height:20px;max-width:300px}
+.dots{display:flex;gap:10px;justify-content:center;margin:22px 0 8px}
+.dots i{width:10px;height:10px;border-radius:50%;background:transparent;border:1.5px solid var(--line2);transition:.18s cubic-bezier(.3,1.5,.4,1)}
+.dots i.on{background:var(--rose);border-color:var(--rose);box-shadow:0 0 10px rgba(212,85,122,.7);transform:scale(1.2)}
+.g-in.err .dots i{background:var(--err);border-color:var(--err)}
+.g-in.okk .dots i{background:var(--ok);border-color:var(--ok);box-shadow:0 0 10px rgba(111,207,151,.7)}
+.pad{display:grid;grid-template-columns:repeat(3,68px);gap:12px;justify-content:center;margin-top:18px}
+.pad button{height:68px;border-radius:14px;border:1px solid var(--line);color:var(--text);font:500 22px var(--body);transition:.12s;background:var(--panel)}
+.pad button:hover{background:var(--panel2);border-color:var(--line2)}
+.pad button:active{transform:scale(.92);background:var(--panel3);color:var(--rose2)}
 .pad .sp{visibility:hidden}
-.g-in .fine{margin-top:26px}
+.g-in .fine{margin-top:24px}
 
+/* ── GENDER PICK (após código válido) ── */
+#genderPick{position:fixed;inset:0;z-index:55;display:flex;align-items:center;justify-content:center;background:var(--bg);padding:24px;transition:opacity .4s ease}
+#genderPick.hidden{opacity:0;pointer-events:none}
+.gp-box{max-width:420px;width:100%;text-align:center;animation:rise .4s cubic-bezier(.2,.8,.3,1) both}
+.gp-box h2{font:600 26px/1.2 var(--body);letter-spacing:-.01em;margin:14px 0 6px}
+.gp-box p{color:var(--mut);font:400 14px var(--body);margin-bottom:26px}
+.gp-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.gp-card{padding:24px 16px;border-radius:16px;border:1px solid var(--line);background:var(--panel);transition:.18s;display:flex;flex-direction:column;align-items:center;gap:10px;color:var(--text)}
+.gp-card:hover{background:var(--panel2);border-color:var(--rose);transform:translateY(-2px);box-shadow:0 10px 30px rgba(0,0,0,.5)}
+.gp-card .gp-emoji{font-size:40px;line-height:1}
+.gp-card .gp-title{font:600 16px var(--body)}
+.gp-card .gp-sub{font:400 12px var(--dim)}
+@media(max-width:400px){.gp-grid{grid-template-columns:1fr}}
+
+/* ── APP ── */
 #app{position:relative;z-index:2;display:flex;flex-direction:column;height:100dvh}
-header{display:flex;align-items:center;gap:10px;padding:14px 16px;border-bottom:1px solid var(--line);background:var(--bg)}
-.hmark{font:italic 600 22px/1 var(--disp);letter-spacing:-.01em}
-.hmark .age{font-size:9px;margin-left:6px;padding:3px 6px}
-.ic{width:36px;height:36px;border-radius:10px;border:1px solid var(--line);background:transparent;color:var(--mut);display:flex;align-items:center;justify-content:center;transition:.18s}
-.ic:hover{color:var(--rose2);border-color:rgba(255,92,122,.4)}
-.dchip{margin-left:auto;font:600 11px var(--body);letter-spacing:.08em;color:var(--gold);border:1px solid rgba(233,192,119,.3);background:rgba(233,192,119,.08);padding:6px 12px;border-radius:10px;transition:.2s}
-.dchip.warn{color:var(--rose2);border-color:rgba(255,92,122,.4);background:rgba(255,92,122,.1);animation:blink 2s infinite}
+header{display:flex;align-items:center;gap:10px;padding:12px 16px;border-bottom:1px solid var(--line);background:var(--bg)}
+.hmark{font:600 18px var(--body);letter-spacing:-.01em}
+.hmark .age{font-size:8px;margin-left:5px;padding:2px 5px}
+.hmark .gp{font-size:11px;margin-left:8px;padding:2px 7px;border-radius:5px;font-weight:500;vertical-align:middle}
+.hmark .gp.M{background:rgba(90,140,220,.15);color:#7aa8e8}
+.hmark .gp.F{background:rgba(212,85,122,.18);color:var(--rose2)}
+.ic{width:36px;height:36px;border-radius:9px;border:1px solid var(--line);color:var(--mut);display:flex;align-items:center;justify-content:center;transition:.18s}
+.ic:hover{color:var(--text);border-color:var(--line2);background:var(--panel)}
+.dchip{margin-left:auto;font:500 11px var(--body);letter-spacing:.04em;color:var(--gold);border:1px solid rgba(201,169,106,.3);background:rgba(201,169,106,.08);padding:5px 10px;border-radius:8px;transition:.2s}
+.dchip.warn{color:var(--err);border-color:rgba(229,115,115,.4);background:rgba(229,115,115,.08);animation:blink 2s infinite}
 #chatWrap{flex:1;overflow-y:auto;overscroll-behavior:contain}
 #empty{min-height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:32px 22px;text-align:center}
-.simple-orb{width:64px;height:64px;border-radius:50%;background:linear-gradient(135deg,var(--rose) 0%,var(--wine) 100%);box-shadow:0 8px 32px rgba(255,92,122,.35);animation:breathe 4s ease-in-out infinite;margin-bottom:20px}
-#empty .over{margin-bottom:12px}
-#empty h2{font:500 clamp(28px,7vw,40px)/1.2 var(--disp);letter-spacing:-.02em;margin-bottom:10px}
-#empty>p{color:var(--mut);font:300 15px/1.55 var(--body);max-width:290px}
-.chips{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:28px;width:100%;max-width:400px}
-.chip{padding:13px 12px;border-radius:14px;border:1px solid var(--line2);color:var(--mut);font:500 12.5px/1.35 var(--body);text-align:left;transition:.2s;background:var(--panel)}
-.chip:hover{color:var(--text);border-color:rgba(255,92,122,.5);transform:translateY(-2px);box-shadow:0 8px 20px rgba(0,0,0,.25)}
-#msgs{max-width:740px;margin:0 auto;padding:24px 16px 10px;display:flex;flex-direction:column;gap:14px}
-.msg{animation:rise .3s cubic-bezier(.2,.8,.3,1) both;display:flex}
+.simple-orb{width:56px;height:56px;border-radius:14px;background:linear-gradient(135deg,var(--rose),var(--wine));box-shadow:0 10px 30px rgba(212,85,122,.35);animation:breathe 4s ease-in-out infinite;margin-bottom:18px;display:flex;align-items:center;justify-content:center;color:#fff;font-size:24px}
+#empty .over{margin-bottom:10px}
+#empty h2{font:500 clamp(26px,7vw,36px)/1.2 var(--body);letter-spacing:-.015em;margin-bottom:8px}
+#empty>p{color:var(--mut);font:400 14.5px/1.55 var(--body);max-width:300px}
+.chips{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:26px;width:100%;max-width:420px}
+.chip{padding:12px 14px;border-radius:12px;border:1px solid var(--line);color:var(--mut);font:500 12.5px/1.4 var(--body);text-align:left;transition:.2s;background:var(--panel)}
+.chip:hover{color:var(--text);border-color:var(--line2);background:var(--panel2);transform:translateY(-1px)}
+#msgs{max-width:760px;margin:0 auto;padding:24px 16px 10px;display:flex;flex-direction:column;gap:16px}
+.msg{animation:rise .3s cubic-bezier(.2,.8,.3,1) both;display:flex;gap:10px}
 .msg.user{justify-content:flex-end}
 .msg.assistant{justify-content:flex-start}
-.bub{max-width:85%;padding:12px 16px;border-radius:18px;font:400 15px/1.55 var(--body);white-space:pre-wrap;word-break:break-word}
-.msg.user .bub{background:linear-gradient(135deg,var(--rose) 0%,var(--wine) 100%);color:#fff;box-shadow:0 4px 14px rgba(255,92,122,.25);border-bottom-right-radius:6px}
-.msg.assistant .bub{background:var(--panel2);border:1px solid var(--line);color:var(--text);box-shadow:0 2px 8px rgba(0,0,0,.15);border-bottom-left-radius:6px}
+.avatar{width:30px;height:30px;border-radius:8px;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:14px;color:#fff;background:linear-gradient(135deg,var(--rose),var(--wine))}
+.bub{max-width:82%;padding:12px 16px;border-radius:16px;font:400 15px/1.55 var(--body);white-space:pre-wrap;word-break:break-word}
+.msg.user .bub{background:var(--panel3);color:var(--text);border-bottom-right-radius:4px}
+.msg.assistant .bub{background:transparent;color:var(--text);border-bottom-left-radius:4px;padding-left:0;padding-right:0}
 .a-content em{color:var(--rose2);font-style:italic}
 .a-content pre{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:10px;overflow-x:auto;margin:8px 0;font:12.5px ui-monospace,monospace}
-.a-content :not(pre)>code{background:var(--bg);padding:1px 5px;border-radius:5px;font:12.5px ui-monospace,monospace}
+.a-content :not(pre)>code{background:var(--panel);padding:1px 5px;border-radius:5px;font:12.5px ui-monospace,monospace}
 .a-actions{display:flex;gap:2px;margin-top:6px;opacity:0;transition:.2s}
 .msg:hover .a-actions{opacity:1}
 @media(hover:none){.a-actions{opacity:.5}}
-.a-actions button{background:none;border:none;color:var(--dim);padding:4px 6px;border-radius:6px;transition:.15s}
+.a-actions button{color:var(--dim);padding:4px 6px;border-radius:6px;transition:.15s}
 .a-actions button:hover{color:var(--rose2);background:var(--panel)}
 .tdots{display:inline-flex;gap:5px;padding:6px 0}
 .tdots i{width:7px;height:7px;border-radius:50%;background:var(--rose);animation:tb 1s infinite}
 .tdots i:nth-child(2){animation-delay:.15s}.tdots i:nth-child(3){animation-delay:.3s}
 #composer{padding:10px 16px calc(10px + env(safe-area-inset-bottom))}
-.cbar{max-width:740px;margin:0 auto;display:flex;align-items:flex-end;gap:8px;border-radius:24px;padding:8px 8px 8px 18px;transition:.22s;background:var(--panel);border:1px solid var(--line2);box-shadow:0 8px 24px rgba(0,0,0,.2)}
-.cbar:focus-within{border-color:rgba(255,92,122,.5);box-shadow:0 0 0 2px rgba(255,92,122,.1),0 8px 24px rgba(0,0,0,.2)}
-#ta{flex:1;background:none;border:none;outline:none;resize:none;color:var(--text);font:400 15.5px/1.45 var(--body);max-height:160px;padding:8px 0}
+.cbar{max-width:760px;margin:0 auto;display:flex;align-items:flex-end;gap:8px;border-radius:22px;padding:8px 8px 8px 18px;transition:.22s;background:var(--panel);border:1px solid var(--line);box-shadow:0 6px 20px rgba(0,0,0,.3)}
+.cbar:focus-within{border-color:var(--line2);box-shadow:0 0 0 1px var(--line2),0 6px 20px rgba(0,0,0,.3)}
+#ta{flex:1;background:none;border:none;outline:none;resize:none;color:var(--text);font:400 15px/1.45 var(--body);max-height:160px;padding:8px 0}
 #ta::placeholder{color:var(--dim)}
-#send{width:42px;height:42px;border-radius:50%;border:none;flex-shrink:0;display:flex;align-items:center;justify-content:center;color:#fff;transition:.2s;background:linear-gradient(135deg,var(--rose2),var(--rose) 55%,var(--wine));box-shadow:0 4px 12px rgba(255,92,122,.35)}
-#send:active{transform:scale(.86)}
-#send.stop{background:var(--panel2);border:1px solid var(--line2);box-shadow:none;color:var(--mut)}
+#send{width:38px;height:38px;border-radius:10px;flex-shrink:0;display:flex;align-items:center;justify-content:center;color:#fff;transition:.2s;background:var(--rose)}
+#send:hover{background:var(--wine)}
+#send:active{transform:scale(.9)}
+#send.stop{background:var(--panel3);border:1px solid var(--line2);color:var(--mut)}
 #composer .fine{text-align:center;margin-top:8px}
 
-.backdrop{position:fixed;inset:0;background:rgba(10,6,12,.6);z-index:30;opacity:0;pointer-events:none;transition:.25s}
+.backdrop{position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:30;opacity:0;pointer-events:none;transition:.25s}
 .backdrop.on{opacity:1;pointer-events:auto}
-.sheet{position:fixed;left:0;right:0;bottom:0;z-index:31;background:var(--bg);border-top:1px solid var(--line);border-radius:22px 22px 0 0;max-height:84dvh;overflow-y:auto;transform:translateY(105%);transition:transform .34s cubic-bezier(.3,.9,.3,1);padding:10px 20px calc(24px + env(safe-area-inset-bottom));box-shadow:0 -20px 60px rgba(0,0,0,.5)}
+.sheet{position:fixed;left:0;right:0;bottom:0;z-index:31;background:var(--bg);border-top:1px solid var(--line);border-radius:18px 18px 0 0;max-height:84dvh;overflow-y:auto;transform:translateY(105%);transition:transform .34s cubic-bezier(.3,.9,.3,1);padding:10px 20px calc(24px + env(safe-area-inset-bottom));box-shadow:0 -20px 60px rgba(0,0,0,.5)}
 .sheet.on{transform:none}
-.handle{width:42px;height:4px;border-radius:4px;background:var(--line2);margin:8px auto 16px}
-.sheet h3{font:italic 600 20px var(--disp)}
-.btn-o{width:100%;padding:12px;border-radius:12px;border:1px dashed var(--line2);background:transparent;color:var(--mut);font:600 14px var(--body);margin-top:12px;transition:.18s}
-.btn-o:hover{border-color:rgba(255,92,122,.5);color:var(--rose2)}
-.hitem{display:flex;align-items:center;gap:10px;padding:12px;border-radius:12px;border:1px solid transparent;background:transparent;margin-top:8px;cursor:pointer;transition:.16s}
+.handle{width:40px;height:4px;border-radius:4px;background:var(--line2);margin:8px auto 16px}
+.sheet h3{font:600 18px var(--body)}
+.btn-o{width:100%;padding:12px;border-radius:12px;border:1px dashed var(--line2);color:var(--mut);font:500 14px var(--body);margin-top:12px;transition:.18s}
+.btn-o:hover{border-color:var(--rose);color:var(--rose2)}
+.hitem{display:flex;align-items:center;gap:10px;padding:12px;border-radius:10px;border:1px solid transparent;margin-top:6px;transition:.16s;cursor:pointer}
 .hitem:hover{background:var(--panel);border-color:var(--line)}
-.hitem.on{background:var(--panel2);border-color:rgba(255,92,122,.4);box-shadow:0 0 16px rgba(255,92,122,.08)}
+.hitem.on{background:var(--panel2);border-color:var(--line2)}
 .hitem>div{flex:1;min-width:0}
-.hitem b{display:block;font:600 14px var(--body);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.hitem b{display:block;font:500 14px var(--body);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .hitem small{color:var(--dim);font-size:11.5px}
-.hitem button{background:none;border:none;color:var(--dim);font-size:15px;padding:4px 8px;border-radius:6px;transition:.15s}
-.hitem button:hover{color:var(--rose);background:var(--panel)}
-.toast{position:fixed;left:50%;bottom:112px;transform:translate(-50%,14px);background:var(--panel2);border:1px solid rgba(255,92,122,.4);color:var(--text);padding:10px 18px;border-radius:16px;font:500 13.5px var(--body);z-index:60;opacity:0;transition:.25s;box-shadow:0 12px 34px rgba(0,0,0,.55);pointer-events:none;max-width:88vw}
+.hitem button{color:var(--dim);font-size:14px;padding:4px 8px;border-radius:6px;transition:.15s}
+.hitem button:hover{color:var(--err);background:var(--panel)}
+.toast{position:fixed;left:50%;bottom:112px;transform:translate(-50%,14px);background:var(--panel2);border:1px solid var(--line2);color:var(--text);padding:10px 18px;border-radius:12px;font:500 13.5px var(--body);z-index:60;opacity:0;transition:.25s;box-shadow:0 12px 34px rgba(0,0,0,.55);pointer-events:none;max-width:88vw}
 .toast.on{opacity:1;transform:translate(-50%,0)}
+.toast.err{border-color:var(--err);color:var(--err)}
 </style>
 </head>
 <body>
 
+<!-- ════════ TELA DO CÓDIGO ════════ -->
 <div id="gate">
   <div class="g-in">
     <p class="over">Acesso restrito · conteúdo +18</p>
-    <div class="g-orb"></div>
-    <h1 class="mark">blux<span class="age">+18</span></h1>
+    <div class="g-orb">🔐</div>
+    <h1 class="mark">BLUX<span class="age">+18</span></h1>
     <p id="gateMsg">Digite seu código de recarga de 6 dígitos</p>
     <div class="dots" id="dots"><i></i><i></i><i></i><i></i><i></i><i></i></div>
     <div class="pad" id="pad">
@@ -129,19 +169,41 @@ header{display:flex;align-items:center;gap:10px;padding:14px 16px;border-bottom:
       <button data-k="7">7</button><button data-k="8">8</button><button data-k="9">9</button>
       <button class="sp"></button><button data-k="0">0</button><button data-k="del">⌫</button>
     </div>
-    <p class="fine">Cada código libera alguns dias de acesso.<br>Quando expirar, insira um novo.</p>
+    <p class="fine">Cada código pode ser usado apenas uma vez.<br>Ao ativar, escolha entre Blux Masculino ou Feminino.</p>
   </div>
 </div>
 
+<!-- ════════ TELA DE ESCOLHA DE GÊNERO ════════ -->
+<div id="genderPick" class="hidden">
+  <div class="gp-box">
+    <p class="over">Código ativado ✓</p>
+    <h2>Escolha sua BLUX</h2>
+    <p>Qual versão você quer como companhia?</p>
+    <div class="gp-grid">
+      <button class="gp-card" data-gender="M">
+        <div class="gp-emoji">♂️</div>
+        <div class="gp-title">Blux Masculino</div>
+        <div class="gp-sub">Personalidade masculina</div>
+      </button>
+      <button class="gp-card" data-gender="F">
+        <div class="gp-emoji">♀️</div>
+        <div class="gp-title">Blux Feminino</div>
+        <div class="gp-sub">Personalidade feminina</div>
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- ════════ APP ════════ -->
 <div id="app" class="hidden">
   <header>
     <button class="ic" id="histBtn" title="Conversas"><svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 12a9 9 0 1 0 3-6.7M3 4v5h5"/><path d="M12 7v5l3 2"/></svg></button>
-    <div class="hmark">blux<span class="age">+18</span></div>
+    <div class="hmark">BLUX<span class="age">+18</span><span class="gp" id="genderChip"></span></div>
     <span class="dchip" id="daysChip">⏳ —</span>
   </header>
   <div id="chatWrap">
     <div id="empty">
-      <div class="simple-orb"></div>
+      <div class="simple-orb" id="emptyOrb">💬</div>
       <p class="over">blux · companhia sem filtros</p>
       <h2 id="greet"></h2>
       <p>Sua companhia +18, sem julgamento. O que vamos aprontar hoje?</p>
@@ -172,129 +234,210 @@ header{display:flex;align-items:center;gap:10px;padding:14px 16px;border-bottom:
 
 <script>
 const $=s=>document.querySelector(s),$$=s=>document.querySelectorAll(s);
-const store={get:(k,d)=>{try{const v=JSON.parse(localStorage.getItem('blux_'+k));return v==null?d:v}catch{return d}},set:(k,v)=>localStorage.setItem('blux_'+k,JSON.stringify(v))};
+const store={
+  get:(k,d)=>{try{const v=JSON.parse(localStorage.getItem('blux_'+k));return v==null?d:v}catch{return d}},
+  set:(k,v)=>localStorage.setItem('blux_'+k,JSON.stringify(v)),
+  del:(k)=>localStorage.removeItem('blux_'+k)
+};
 const DIA=864e5;
 const SVG={
- send:'<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5M5 12l7-7 7 7"/></svg>',
- stop:'<svg viewBox="0 0 24 24" width="14" height="14"><rect x="5" y="5" width="14" height="14" rx="3" fill="currentColor"/></svg>',
- copy:'<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg>',
- regen:'<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 12a9 9 0 1 1-2.6-6.4M21 3v6h-6"/></svg>'};
+  send:'<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>',
+  stop:'<svg viewBox="0 0 24 24" width="13" height="13"><rect x="5" y="5" width="14" height="14" rx="3" fill="currentColor"/></svg>',
+  copy:'<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg>',
+  regen:'<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 12a9 9 0 1 1-2.6-6.4M21 3v6h-6"/></svg>'
+};
 const S={chats:store.get('chats',[]),cur:null,streaming:false,abort:null};
 
-function toast(t){const d=document.createElement('div');d.className='toast';d.textContent=t;document.body.appendChild(d);requestAnimationFrame(()=>d.classList.add('on'));setTimeout(()=>{d.classList.remove('on');setTimeout(()=>d.remove(),300)},2400)}
+function toast(t,err=false){
+  const d=document.createElement('div');d.className='toast'+(err?' err':'');
+  d.textContent=t;document.body.appendChild(d);
+  requestAnimationFrame(()=>d.classList.add('on'));
+  setTimeout(()=>{d.classList.remove('on');setTimeout(()=>d.remove(),300)},2600);
+}
 
 const recarga=()=>store.get('recarga',null);
+const genero=()=>store.get('genero',null);
 const diasRest=()=>{const r=recarga();return r?Math.max(0,Math.ceil((r.ativadoEm+r.dias*DIA-Date.now())/DIA)):0};
-function entrar(){
- $('#gate').classList.add('ok');
- setTimeout(()=>{$('#gate').classList.add('hidden');$('#app').classList.remove('hidden');
-  const d=diasRest(),c=$('#daysChip');c.textContent='⏳ '+d+'d';c.classList.toggle('warn',d<=1);
-  renderAll();uiStream();$('#ta').focus()},500)}
-function lockout(msg){store.set('recarga',null);$('#app').classList.add('hidden');
- const g=$('#gate');g.classList.remove('hidden','ok');$('.g-in').classList.remove('okk');
- $('#gateMsg').textContent=msg;pin='';paint()}
-function boot(){
- if(diasRest()>0){entrar();return}
- if(recarga())$('#gateMsg').textContent='Sua recarga expirou — insira um novo código.';
- $('#gate').classList.remove('hidden')}
 
+// ── Fluxo de entrada ──
+function entrarApp(){
+  $('#gate').classList.add('ok');
+  $('#genderPick').classList.add('hidden');
+  setTimeout(()=>{
+    $('#gate').classList.add('hidden');
+    $('#app').classList.remove('hidden');
+    const d=diasRest(),c=$('#daysChip');
+    c.textContent='⏳ '+d+'d';c.classList.toggle('warn',d<=1);
+    const g=genero();
+    const gc=$('#genderChip');
+    gc.textContent=g==='M'?'♂ Masculino':g==='F'?'♀ Feminino':'';
+    gc.classList.remove('M','F');if(g)gc.classList.add(g);
+    $('#emptyOrb').textContent=g==='M'?'♂️':'♀️';
+    renderAll();uiStream();$('#ta').focus();
+  },450);
+}
+
+function mostrarGenderPick(dias){
+  $('#gate').classList.add('ok');
+  setTimeout(()=>{
+    $('#gate').classList.add('hidden');
+    $('#genderPick').classList.remove('hidden');
+    window._pendDias=dias;
+  },450);
+}
+
+function lockout(msg){
+  store.del('recarga');store.del('genero');
+  $('#app').classList.add('hidden');
+  $('#genderPick').classList.add('hidden');
+  const g=$('#gate');g.classList.remove('hidden','ok');
+  $('.g-in').classList.remove('okk');
+  $('#gateMsg').textContent=msg;pin='';paint();
+}
+
+function boot(){
+  const r=recarga(),g=genero();
+  if(r&&diasRest()>0&&g){entrarApp();return}
+  if(r&&diasRest()>0&&!g){mostrarGenderPick(r.dias);return}
+  if(r)$('#gateMsg').textContent='Sua recarga expirou — insira um novo código.';
+  $('#gate').classList.remove('hidden');
+}
+
+// ── PIN pad ──
 let pin='';
 const paint=()=>$$('#dots i').forEach((e,i)=>e.classList.toggle('on',i<pin.length));
 function addDig(d){if(pin.length>=6)return;pin+=d;paint();if(pin.length===6)confere()}
 function delDig(){pin=pin.slice(0,-1);paint()}
-async function confere(){
- $('#gateMsg').textContent='Ativando código…';
- try{
-  const r=await fetch('/api/ativar',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({codigo:pin})});
-  const j=await r.json();
-  if(r.ok&&j.dias){
-   store.set('recarga',{codigo:pin,dias:j.dias,ativadoEm:Date.now()});
-   $('#gateMsg').textContent='Código ativado ✓ '+j.dias+' dia'+(j.dias===1?'':'s')+' liberado'+(j.dias===1?'':'s');
-   $('.g-in').classList.add('okk');setTimeout(entrar,600)}
-  else erroPin(j.error||'Código inválido.')
- }catch{erroPin('Servidor indisponível.')}
-}
-function erroPin(t){const g=$('.g-in');g.classList.add('err');$('#gateMsg').textContent=t;
- setTimeout(()=>{g.classList.remove('err');pin='';paint()},550)}
-$('#pad').addEventListener('click',e=>{const b=e.target.closest('button');if(!b||!b.dataset.k)return;b.dataset.k==='del'?delDig():addDig(b.dataset.k)});
-addEventListener('keydown',e=>{if($('#gate').classList.contains('hidden'))return;if(/^[0-9]$/.test(e.key))addDig(e.key);else if(e.key==='Backspace')delDig()});
 
+async function confere(){
+  $('#gateMsg').textContent='Ativando código…';
+  try{
+    const r=await fetch('/api/ativar',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({codigo:pin})});
+    const j=await r.json();
+    if(r.ok&&j.dias){
+      // Não salva recarga ainda — só depois de escolher gênero
+      $('#gateMsg').textContent='Código ativado ✓ '+j.dias+' dia'+(j.dias===1?'':'s')+' liberado'+(j.dias===1?'':'s');
+      $('.g-in').classList.add('okk');
+      setTimeout(()=>mostrarGenderPick(j.dias),600);
+    } else erroPin(j.error||'Código inválido.');
+  }catch{erroPin('Servidor indisponível.')}
+}
+
+function erroPin(t){
+  const g=$('.g-in');g.classList.add('err');
+  $('#gateMsg').textContent=t;toast(t,true);
+  setTimeout(()=>{g.classList.remove('err');pin='';paint()},600);
+}
+
+$('#pad').addEventListener('click',e=>{const b=e.target.closest('button');if(!b||!b.dataset.k)return;b.dataset.k==='del'?delDig():addDig(b.dataset.k)});
+addEventListener('keydown',e=>{
+  if(!$('#gate').classList.contains('hidden')){
+    if(/^[0-9]$/.test(e.key))addDig(e.key);else if(e.key==='Backspace')delDig();
+  }
+});
+
+// ── Escolha de gênero ──
+$$('.gp-card').forEach(btn=>{
+  btn.addEventListener('click',()=>{
+    const g=btn.dataset.gender;
+    store.set('genero',g);
+    store.set('recarga',{
+      codigo:pin,
+      dias:window._pendDias||1,
+      ativadoEm:Date.now()
+    });
+    entrarApp();
+  });
+});
+
+// ── Chat ──
 const esc=s=>s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 function md(t){if(!t)return'';const pre=[];
- t=t.replace(/```(\w*)\n?([\s\S]*?)```/g,(m,l,c)=>{pre.push('<pre><code>'+esc(c)+'</code></pre>');return'\u0000'+(pre.length-1)+'\u0000'});
- t=esc(t)
-  .replace(/`([^`\n]+)`/g,'<code>$1</code>')
-  .replace(/\*\*([^*]+)\*\*/g,'<strong>$1</strong>')
-  .replace(/(^|[^*])\*([^*\n]+)\*/g,'$1<em>$2</em>')
-  .replace(/\n/g,'<br>');
- return t.replace(/\u0000(\d+)\u0000/g,(m,i)=>pre[i])}
+  t=t.replace(/```(\w*)\n?([\s\S]*?)```/g,(m,l,c)=>{pre.push('<pre><code>'+esc(c)+'</code></pre>');return'\u0000'+(pre.length-1)+'\u0000'});
+  t=esc(t)
+    .replace(/`([^`\n]+)`/g,'<code>$1</code>')
+    .replace(/\*\*([^*]+)\*\*/g,'<strong>$1</strong>')
+    .replace(/(^|[^*])\*([^*\n]+)\*/g,'$1<em>$2</em>')
+    .replace(/\n/g,'<br>');
+  return t.replace(/\u0000(\d+)\u0000/g,(m,i)=>pre[i]);
+}
 const cur=()=>S.chats.find(c=>c.id===S.cur);
 function ensureChat(){if(!cur()){S.chats.unshift({id:Date.now().toString(36)+Math.random().toString(36).slice(2,6),title:'Nova conversa',messages:[],ts:Date.now()});S.cur=S.chats[0].id}}
 function saveChats(){S.chats=S.chats.slice(0,30);store.set('chats',S.chats)}
 function buildNode(m,last){
- const d=document.createElement('div');
- if(m.role==='user'){d.className='msg user';d.innerHTML='<div class="bub">'+esc(m.content)+'</div>';return d}
- d.className='msg assistant';
- d.innerHTML='<div class="bub"><div class="a-content">'+
-  (m.pending?'<span class="tdots"><i></i><i></i><i></i></span>':md(m.content))+
-  '</div><div class="a-actions"><button data-a="copy" title="Copiar">'+SVG.copy+'</button>'+
-  (last?'<button data-a="regen" title="Gerar de novo">'+SVG.regen+'</button>':'')+'</div></div>';
- d.querySelector('[data-a=copy]').onclick=()=>{navigator.clipboard.writeText(m.content);toast('Copiado ✓')};
- const rg=d.querySelector('[data-a=regen]');if(rg)rg.onclick=regen;
- return d}
+  const d=document.createElement('div');
+  if(m.role==='user'){d.className='msg user';d.innerHTML='<div class="bub">'+esc(m.content)+'</div>';return d}
+  d.className='msg assistant';
+  const g=genero();
+  const emoji=g==='M'?'♂️':'♀️';
+  d.innerHTML='<div class="avatar">'+emoji+'</div><div class="bub"><div class="a-content">'+
+    (m.pending?'<span class="tdots"><i></i><i></i><i></i></span>':md(m.content))+
+    '</div><div class="a-actions"><button data-a="copy" title="Copiar">'+SVG.copy+'</button>'+
+    (last?'<button data-a="regen" title="Gerar de novo">'+SVG.regen+'</button>':'')+'</div></div>';
+  d.querySelector('[data-a=copy]').onclick=()=>{navigator.clipboard.writeText(m.content);toast('Copiado ✓')};
+  const rg=d.querySelector('[data-a=regen]');if(rg)rg.onclick=regen;
+  return d;
+}
 const wrap=$('#chatWrap');
 const near=()=>wrap.scrollHeight-wrap.scrollTop-wrap.clientHeight<140;
 const maybeScroll=()=>{if(near())wrap.scrollTop=wrap.scrollHeight};
 function renderAll(){
- const c=cur(),box=$('#msgs');box.innerHTML='';
- const has=c&&c.messages.some(m=>m.content);
- $('#empty').classList.toggle('hidden',!!has);
- if(has)c.messages.filter(m=>m.content).forEach((m,i,a)=>box.appendChild(buildNode(m,i===a.length-1&&m.role==='assistant')));
- wrap.scrollTop=wrap.scrollHeight}
+  const c=cur(),box=$('#msgs');box.innerHTML='';
+  const has=c&&c.messages.some(m=>m.content);
+  $('#empty').classList.toggle('hidden',!!has);
+  if(has)c.messages.filter(m=>m.content).forEach((m,i,a)=>box.appendChild(buildNode(m,i===a.length-1&&m.role==='assistant')));
+  wrap.scrollTop=wrap.scrollHeight;
+}
 async function send(t){
- t=(t||'').trim();if(!t||S.streaming)return;
- if(diasRest()<=0){lockout('Sua recarga expirou — insira um novo código.');return}
- ensureChat();const c=cur();
- c.messages.push({role:'user',content:t});c.ts=Date.now();
- if(c.title==='Nova conversa')c.title=t.slice(0,38)+(t.length>38?'…':'');
- saveChats();renderHist();
- $('#empty').classList.add('hidden');
- $('#msgs').appendChild(buildNode({role:'user',content:t}));
- $('#ta').value='';autoTa();wrap.scrollTop=wrap.scrollHeight;
- await stream()}
+  t=(t||'').trim();if(!t||S.streaming)return;
+  if(diasRest()<=0){lockout('Sua recarga expirou — insira um novo código.');return}
+  ensureChat();const c=cur();
+  c.messages.push({role:'user',content:t});c.ts=Date.now();
+  if(c.title==='Nova conversa')c.title=t.slice(0,38)+(t.length>38?'…':'');
+  saveChats();renderHist();
+  $('#empty').classList.add('hidden');
+  $('#msgs').appendChild(buildNode({role:'user',content:t}));
+  $('#ta').value='';autoTa();wrap.scrollTop=wrap.scrollHeight;
+  await stream();
+}
 async function stream(){
- const c=cur(),m={role:'assistant',content:'',pending:true};
- c.messages.push(m);
- const node=buildNode(m);$('#msgs').appendChild(node);
- const el=node.querySelector('.a-content');
- S.streaming=true;uiStream();S.abort=new AbortController();
- const hist=c.messages.filter(x=>x.content&&x!==m).map(x=>({role:x.role,content:x.content}));
- let apiErr=null;
- try{
-  const r=await fetch('/api/chat',{method:'POST',signal:S.abort.signal,
-   headers:{'Content-Type':'application/json'},body:JSON.stringify({messages:hist})});
-  if(!r.ok){let e='Erro do servidor ('+r.status+')';try{e=(await r.json()).error||e}catch{};throw new Error(e)}
-  const rd=r.body.getReader(),dec=new TextDecoder();let buf='';
-  for(;;){const{done,value}=await rd.read();if(done)break;buf+=dec.decode(value,{stream:true});
-   let i;while((i=buf.indexOf('\n'))>=0){const L=buf.slice(0,i).trim();buf=buf.slice(i+1);
-    if(!L.startsWith('data:'))continue;const d=L.slice(5).trim();if(!d||d==='[DONE]')continue;
-    let j;try{j=JSON.parse(d)}catch{continue}
-    if(j.error){apiErr=j.error;continue}
-    const tk=j.choices?.[0]?.delta?.content;
-    if(tk){if(m.pending){m.pending=false;el.innerHTML=''}m.content+=tk;el.innerHTML=md(m.content);maybeScroll()}
-   }}
-  if(apiErr)throw new Error(apiErr);
- }catch(e){
-  if(e.name==='AbortError'){if(!m.content)m.content='*(interrompido)*'}
-  else toast('⚠ '+e.message)}
- m.pending=false;S.streaming=false;S.abort=null;uiStream();
- if(!m.content)c.messages.pop();
- saveChats();renderHist();renderAll()}
+  const c=cur(),m={role:'assistant',content:'',pending:true};
+  c.messages.push(m);
+  const node=buildNode(m);$('#msgs').appendChild(node);
+  const el=node.querySelector('.a-content');
+  S.streaming=true;uiStream();S.abort=new AbortController();
+  const hist=c.messages.filter(x=>x.content&&x!==m).map(x=>({role:x.role,content:x.content}));
+  const gender=genero()||'M';
+  let apiErr=null;
+  try{
+    const r=await fetch('/api/chat',{method:'POST',signal:S.abort.signal,
+      headers:{'Content-Type':'application/json'},body:JSON.stringify({messages:hist,gender})});
+    if(!r.ok){let e='Erro do servidor ('+r.status+')';try{e=(await r.json()).error||e}catch{};throw new Error(e)}
+    const rd=r.body.getReader(),dec=new TextDecoder();let buf='';
+    for(;;){const{done,value}=await rd.read();if(done)break;buf+=dec.decode(value,{stream:true});
+      let i;while((i=buf.indexOf('\n'))>=0){const L=buf.slice(0,i).trim();buf=buf.slice(i+1);
+        if(!L.startsWith('data:'))continue;const d=L.slice(5).trim();if(!d||d==='[DONE]')continue;
+        let j;try{j=JSON.parse(d)}catch{continue}
+        if(j.error){apiErr=j.error;continue}
+        const tk=j.choices?.[0]?.delta?.content;
+        if(tk){if(m.pending){m.pending=false;el.innerHTML=''}m.content+=tk;el.innerHTML=md(m.content);maybeScroll()}
+      }}
+    if(apiErr)throw new Error(apiErr);
+  }catch(e){
+    if(e.name==='AbortError'){if(!m.content)m.content='*(interrompido)*'}
+    else toast('⚠ '+e.message,true);
+  }
+  m.pending=false;S.streaming=false;S.abort=null;uiStream();
+  if(!m.content)c.messages.pop();
+  saveChats();renderHist();renderAll();
+}
 function regen(){if(S.streaming)return;const c=cur();if(!c)return;
- for(let i=c.messages.length-1;i>=0;i--)if(c.messages[i].role==='assistant'){c.messages.splice(i,1);break}
- saveChats();renderAll();stream()}
+  for(let i=c.messages.length-1;i>=0;i--)if(c.messages[i].role==='assistant'){c.messages.splice(i,1);break}
+  saveChats();renderAll();stream();
+}
 function uiStream(){document.body.classList.toggle('streaming',S.streaming);
- $('#send').innerHTML=S.streaming?SVG.stop:SVG.send;$('#send').classList.toggle('stop',S.streaming)}
+  $('#send').innerHTML=S.streaming?SVG.stop:SVG.send;$('#send').classList.toggle('stop',S.streaming);
+}
 
 const ta=$('#ta');
 function autoTa(){ta.style.height='auto';ta.style.height=Math.min(ta.scrollHeight,160)+'px'}
@@ -309,14 +452,16 @@ $('#backdrop').onclick=closeSheet;
 $('#histBtn').onclick=openHist;
 function rel(t){const s=(Date.now()-t)/1e3;return s<60?'agora':s<3600?Math.floor(s/60)+'min':s<86400?Math.floor(s/3600)+'h':Math.floor(s/86400)+'d'}
 function renderHist(){
- const l=$('#histList');l.innerHTML='';
- if(!S.chats.length)l.innerHTML='<p class="fine" style="padding:14px 2px">Nenhuma conversa ainda — vai me deixar sozinha?</p>';
- S.chats.forEach(c=>{const d=document.createElement('div');d.className='hitem'+(c.id===S.cur?' on':'');
-  d.innerHTML='<div><b>'+esc(c.title)+'</b><small>'+rel(c.ts)+'</small></div><button title="Apagar">✕</button>';
-  d.onclick=()=>{S.cur=c.id;renderAll();closeSheet()};
-  d.querySelector('button').onclick=e=>{e.stopPropagation();S.chats=S.chats.filter(x=>x.id!==c.id);
-   if(S.cur===c.id)S.cur=null;saveChats();renderHist();renderAll()};
-  l.appendChild(d)})}
+  const l=$('#histList');l.innerHTML='';
+  if(!S.chats.length)l.innerHTML='<p class="fine" style="padding:14px 2px">Nenhuma conversa ainda.</p>';
+  S.chats.forEach(c=>{const d=document.createElement('div');d.className='hitem'+(c.id===S.cur?' on':'');
+    d.innerHTML='<div><b>'+esc(c.title)+'</b><small>'+rel(c.ts)+'</small></div><button title="Apagar">✕</button>';
+    d.onclick=()=>{S.cur=c.id;renderAll();closeSheet()};
+    d.querySelector('button').onclick=e=>{e.stopPropagation();S.chats=S.chats.filter(x=>x.id!==c.id);
+      if(S.cur===c.id)S.cur=null;saveChats();renderHist();renderAll()};
+    l.appendChild(d);
+  });
+}
 $('#newChat').onclick=()=>{S.cur=null;renderAll();closeSheet();ta.focus()};
 
 const h=new Date().getHours();
