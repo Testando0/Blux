@@ -257,6 +257,30 @@ const IMG = {
 };
 const LABEL = { F: 'Feminino', M: 'Masculino' };
 
+// ── Frases in-character para erros (a IA "fala" em vez de mostrar erro técnico) ──
+const FRASES_ERRO = {
+  F: [
+    "Ai, deu um probleminha aqui... me manda de novo? 🥺",
+    "Ops, minha conexão falhou. Tenta outra vez, amor?",
+    "Não consegui te responder agora... tenta mais uma vez, vai? 💕",
+    "Hmm, deu ruim do meu lado. Me manda de novo que já já a gente continua.",
+    "Opa, alguma coisa deu errado aqui. Tenta me mandar de novo?",
+    "Ih, travou do meu lado... me manda outra vez, tá?"
+  ],
+  M: [
+    "Eita, deu ruim aqui... manda de novo? 🔧",
+    "Ops, minha conexão falhou. Tenta outra vez, beleza?",
+    "Não consegui te responder agora... tenta mais uma vez, vai?",
+    "Hmm, deu B.O. do meu lado. Manda de novo que já já a gente continua.",
+    "Opa, alguma coisa deu errado aqui. Tenta me mandar de novo?",
+    "Ih, travou aqui... me manda outra vez, tá?"
+  ]
+};
+const FRASES_INT = {
+  F: ["Ei, você me cortou no meio! 😅 Quer que eu continue?"],
+  M: ["Ei, você me interrompeu! 😅 Quer que eu continue?"]
+};
+
 const SVG={
   send:'<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>',
   stop:'<svg viewBox="0 0 24 24" width="13" height="13"><rect x="5" y="5" width="14" height="14" rx="3" fill="currentColor"/></svg>',
@@ -382,7 +406,7 @@ function md(t){
     .replace(/\*\*([^*]+)\*\*/g,'<strong>$1</strong>')
     .replace(/(^|[^*])\*([^*\n]+)\*/g,'$1<em>$2</em>')
     .replace(/\n/g,'<br>');
-  return t.replace(/\x00(\d+)\x00/g,(m,i)=>pre[i]);
+  return t.replace(/\x00(\d+)\u0000/g,(m,i)=>pre[i]).replace(/\x00/g,'');
 }
 
 const cur=()=>S.chats.find(c=>c.id===S.cur);
@@ -465,6 +489,9 @@ async function send(t){
   await stream();
 }
 
+// ════════════════════════════════════════════════════════
+// STREAM — agora erros aparecem como fala do personagem
+// ════════════════════════════════════════════════════════
 async function stream(){
   const c=cur(),m={role:'assistant',content:'',pending:true};
   c.messages.push(m);
@@ -488,20 +515,45 @@ async function stream(){
   });
 
   const gender=genero()||'F';
-  let apiErr=null;
+
+  // Pega uma frase aleatória da lista do gênero
+  const pegarFrase = (lista) => {
+    const arr = lista[gender] || lista.F;
+    return arr[Math.floor(Math.random() * arr.length)];
+  };
+
+  // Escreve a frase como conteúdo da mensagem da IA
+  const aplicarFrase = (tipo='erro') => {
+    const frase = tipo === 'int' ? pegarFrase(FRASES_INT) : pegarFrase(FRASES_ERRO);
+    if(!m.content || m.pending){
+      m.content = frase;
+    } else {
+      // Se já tinha começado a responder, adiciona a frase em itálico
+      m.content += '\n\n*' + frase + '*';
+    }
+    m.pending = false;
+    el.innerHTML = md(m.content);
+    maybeScroll();
+  };
+
   try{
     const r=await fetch('/api/chat',{
       method:'POST',signal:S.abort.signal,
       headers:{'Content-Type':'application/json'},
       body:JSON.stringify({messages:hist,gender})
     });
+
     if(!r.ok){
-      let e='Erro do servidor ('+r.status+')';
-      try{e=(await r.json()).error||e}catch{}
-      throw new Error(e);
+      // Erro HTTP (401, 500, etc) → fala do personagem
+      aplicarFrase('erro');
+      m.pending=false;S.streaming=false;S.abort=null;uiStream();
+      saveChats();renderHist();renderAll();
+      return;
     }
+
     const rd=r.body.getReader(),dec=new TextDecoder();
     let buf='';
+    let teveErroApi=false;
     for(;;){
       const {done,value}=await rd.read();
       if(done)break;
@@ -514,7 +566,7 @@ async function stream(){
         const d=L.slice(5).trim();
         if(!d||d==='[DONE]')continue;
         let j;try{j=JSON.parse(d)}catch{continue}
-        if(j.error){apiErr=j.error;continue}
+        if(j.error){teveErroApi=true;continue}
         const tk=j.choices?.[0]?.delta?.content;
         if(tk){
           if(m.pending){m.pending=false;el.innerHTML=''}
@@ -524,15 +576,21 @@ async function stream(){
         }
       }
     }
-    if(apiErr)throw new Error(apiErr);
+    // Se a API mandou erro e a IA ainda não tinha respondido nada
+    if(teveErroApi && !m.content){
+      aplicarFrase('erro');
+    }
   }catch(e){
     if(e.name==='AbortError'){
-      if(!m.content)m.content='*(interrompido)*';
+      // Usuário clicou em parar → frase de interrupção
+      aplicarFrase('int');
     } else {
-      toast('⚠ '+e.message,true);
+      // Qualquer outro erro (rede, timeout, DNS...) → frase genérica
+      aplicarFrase('erro');
     }
   }
   m.pending=false;S.streaming=false;S.abort=null;uiStream();
+  // Se por algum motivo ainda não tem conteúdo, remove a mensagem vazia
   if(!m.content)c.messages.pop();
   saveChats();renderHist();renderAll();
 }
@@ -597,7 +655,6 @@ $('#backdrop').onclick=closeSheet;
 $('#histBtn').onclick=openHist;
 
 function rel(t){
-  // CORRIGIDO: era Rel.now() (inexistente), agora é Date.now()
   const s=(Date.now()-t)/1e3;
   return s<60?'agora':s<3600?Math.floor(s/60)+'min':s<86400?Math.floor(s/3600)+'h':Math.floor(s/86400)+'d';
 }
@@ -628,4 +685,4 @@ ta.placeholder=['Diga algo no meu ouvido…','O que vamos aprontar hoje?','Sem v
 boot();
 </script>
 </body>
-  </html>
+          </html>
