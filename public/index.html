@@ -116,7 +116,7 @@ header{display:flex;align-items:center;gap:10px;padding:12px 16px;border-bottom:
 .msg.user{justify-content:flex-end}
 .msg.assistant{justify-content:flex-start}
 
-/* avatar da mensagem — foto encaixada, estilo ChatGPT */
+/* avatar da mensagem — foto encaixada */
 .avatar{width:32px;height:32px;border-radius:50%;flex-shrink:0;overflow:hidden;border:1px solid var(--line2);background:var(--panel);box-shadow:0 2px 6px rgba(0,0,0,.4)}
 .avatar img{width:100%;height:100%;object-fit:cover;display:block}
 
@@ -134,11 +134,30 @@ header{display:flex;align-items:center;gap:10px;padding:12px 16px;border-bottom:
 .tdots{display:inline-flex;gap:5px;padding:6px 0}
 .tdots i{width:7px;height:7px;border-radius:50%;background:var(--rose);animation:tb 1s infinite}
 .tdots i:nth-child(2){animation-delay:.15s}.tdots i:nth-child(3){animation-delay:.3s}
+
+/* Imagens nas mensagens */
+.msg-img{max-width:100%;border-radius:12px;margin-top:8px;cursor:pointer;transition:.2s;max-height:300px;object-fit:cover}
+.msg-img:hover{transform:scale(1.02);box-shadow:0 8px 20px rgba(0,0,0,.5)}
+
+/* Preview de imagem no composer */
+.img-preview-wrap{position:relative;display:inline-block;margin:8px 0;width:100%}
+.img-preview{max-width:100%;max-height:200px;border-radius:10px;object-fit:cover;border:1px solid var(--line2)}
+.img-preview-remove{position:absolute;top:4px;right:4px;width:24px;height:24px;border-radius:50%;background:rgba(0,0,0,.7);color:#fff;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:14px;transition:.2s}
+.img-preview-remove:hover{background:var(--err)}
+
+/* Modal de visualização de imagem */
+.img-modal{position:fixed;inset:0;z-index:100;background:rgba(0,0,0,.9);display:flex;align-items:center;justify-content:center;padding:20px;cursor:zoom-out;opacity:0;pointer-events:none;transition:.25s}
+.img-modal.on{opacity:1;pointer-events:auto}
+.img-modal img{max-width:95%;max-height:95%;border-radius:12px;box-shadow:0 20px 60px rgba(0,0,0,.8)}
+
 #composer{padding:10px 16px calc(10px + env(safe-area-inset-bottom))}
-.cbar{max-width:760px;margin:0 auto;display:flex;align-items:flex-end;gap:8px;border-radius:22px;padding:8px 8px 8px 18px;transition:.22s;background:var(--panel);border:1px solid var(--line);box-shadow:0 6px 20px rgba(0,0,0,.3)}
+.cbar{max-width:760px;margin:0 auto;display:flex;align-items:flex-end;gap:8px;border-radius:22px;padding:8px 8px 8px 18px;transition:.22s;background:var(--panel);border:1px solid var(--line);box-shadow:0 6px 20px rgba(0,0,0,.3);flex-wrap:wrap}
 .cbar:focus-within{border-color:var(--line2);box-shadow:0 0 0 1px var(--line2),0 6px 20px rgba(0,0,0,.3)}
-#ta{flex:1;background:none;border:none;outline:none;resize:none;color:var(--text);font:400 15px/1.45 var(--body);max-height:160px;padding:8px 0}
+.cbar-with-img{flex-wrap:wrap}
+#ta{flex:1;background:none;border:none;outline:none;resize:none;color:var(--text);font:400 15px/1.45 var(--body);max-height:160px;padding:8px 0;min-width:0}
 #ta::placeholder{color:var(--dim)}
+#imgBtn{width:38px;height:38px;border-radius:10px;flex-shrink:0;display:flex;align-items:center;justify-content:center;color:var(--mut);transition:.2s}
+#imgBtn:hover{color:var(--rose2);background:var(--panel2)}
 #send{width:38px;height:38px;border-radius:10px;flex-shrink:0;display:flex;align-items:center;justify-content:center;color:#fff;transition:.2s;background:var(--rose)}
 #send:hover{background:var(--wine)}
 #send:active{transform:scale(.9)}
@@ -230,12 +249,25 @@ header{display:flex;align-items:center;gap:10px;padding:12px 16px;border-bottom:
     <div id="msgs"></div>
   </div>
   <div id="composer">
-    <div class="cbar">
+    <div class="cbar" id="cbar">
+      <div id="imgPreviewContainer" class="img-preview-wrap hidden">
+        <img id="imgPreview" class="img-preview" alt="Preview">
+        <button id="imgRemove" class="img-preview-remove" title="Remover imagem">✕</button>
+      </div>
       <textarea id="ta" rows="1" placeholder="Diga algo no meu ouvido…"></textarea>
+      <button id="imgBtn" title="Enviar imagem">
+        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="m21 15-5-5L5 21"/></svg>
+      </button>
+      <input type="file" id="imgInput" accept="image/*" class="hidden">
       <button id="send" title="Enviar"></button>
     </div>
     <p class="fine">BLUX é uma IA e pode cometer erros · conteúdo +18</p>
   </div>
+</div>
+
+<!-- Modal de visualização de imagem -->
+<div class="img-modal" id="imgModal">
+  <img id="imgModalImg" src="" alt="Imagem em tela cheia">
 </div>
 
 <div class="backdrop" id="backdrop"></div>
@@ -267,7 +299,7 @@ const SVG={
   copy:'<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg>',
   regen:'<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 12a9 9 0 1 1-2.6-6.4M21 3v6h-6"/></svg>'
 };
-const S={chats:store.get('chats',[]),cur:null,streaming:false,abort:null};
+const S={chats:store.get('chats',[]),cur:null,streaming:false,abort:null,pendingImage:null};
 
 function toast(t,err=false){
   const d=document.createElement('div');d.className='toast'+(err?' err':'');
@@ -396,7 +428,20 @@ function saveChats(){S.chats=S.chats.slice(0,30);store.set('chats',S.chats)}
 
 function buildNode(m,last){
   const d=document.createElement('div');
-  if(m.role==='user'){d.className='msg user';d.innerHTML='<div class="bub">'+esc(m.content)+'</div>';return d}
+  if(m.role==='user'){
+    d.className='msg user';
+    let html='<div class="bub">'+esc(m.content);
+    if(m.image){
+      html+='<img src="'+m.image+'" class="msg-img" alt="Imagem enviada">';
+    }
+    html+='</div>';
+    d.innerHTML=html;
+    const img=d.querySelector('.msg-img');
+    if(img){
+      img.onclick=()=>openImgModal(img.src);
+    }
+    return d;
+  }
   d.className='msg assistant';
   const g = genero() || 'F';
   const url = IMG[g];
@@ -410,6 +455,15 @@ function buildNode(m,last){
   const rg=d.querySelector('[data-a=regen]');if(rg)rg.onclick=regen;
   return d;
 }
+
+// Modal de visualização de imagem
+function openImgModal(src){
+  const modal=$('#imgModal');
+  $('#imgModalImg').src=src;
+  modal.classList.add('on');
+}
+$('#imgModal').onclick=()=>$('#imgModal').classList.remove('on');
+
 const wrap=$('#chatWrap');
 const near=()=>wrap.scrollHeight-wrap.scrollTop-wrap.clientHeight<140;
 const maybeScroll=()=>{if(near())wrap.scrollTop=wrap.scrollHeight};
@@ -417,28 +471,57 @@ function renderAll(){
   const c=cur(),box=$('#msgs');box.innerHTML='';
   const has=c&&c.messages.some(m=>m.content);
   $('#empty').classList.toggle('hidden',!!has);
-  if(has)c.messages.filter(m=>m.content).forEach((m,i,a)=>box.appendChild(buildNode(m,i===a.length-1&&m.role==='assistant')));
+  if(has)c.messages.filter(m=>m.content||m.image).forEach((m,i,a)=>box.appendChild(buildNode(m,i===a.length-1&&m.role==='assistant')));
   wrap.scrollTop=wrap.scrollHeight;
 }
+
 async function send(t){
-  t=(t||'').trim();if(!t||S.streaming)return;
+  t=(t||'').trim();
+  const hasImage=S.pendingImage;
+  if(!t&&!hasImage||S.streaming)return;
   if(diasRest()<=0){lockout('Sua recarga expirou — insira um novo código.');return}
   ensureChat();const c=cur();
-  c.messages.push({role:'user',content:t});c.ts=Date.now();
-  if(c.title==='Nova conversa')c.title=t.slice(0,38)+(t.length>38?'…':'');
+  
+  const msgData={role:'user',content:t};
+  if(hasImage){
+    msgData.image=S.pendingImage;
+  }
+  c.messages.push(msgData);
+  c.ts=Date.now();
+  if(c.title==='Nova conversa')c.title=(t||'Imagem').slice(0,38)+((t||'Imagem').length>38?'…':'');
   saveChats();renderHist();
   $('#empty').classList.add('hidden');
-  $('#msgs').appendChild(buildNode({role:'user',content:t}));
-  $('#ta').value='';autoTa();wrap.scrollTop=wrap.scrollHeight;
+  $('#msgs').appendChild(buildNode(msgData));
+  $('#ta').value='';
+  S.pendingImage=null;
+  $('#imgPreviewContainer').classList.add('hidden');
+  $('#cbar').classList.remove('cbar-with-img');
+  autoTa();wrap.scrollTop=wrap.scrollHeight;
   await stream();
 }
+
 async function stream(){
   const c=cur(),m={role:'assistant',content:'',pending:true};
   c.messages.push(m);
   const node=buildNode(m);$('#msgs').appendChild(node);
   const el=node.querySelector('.a-content');
   S.streaming=true;uiStream();S.abort=new AbortController();
-  const hist=c.messages.filter(x=>x.content&&x!==m).map(x=>({role:x.role,content:x.content}));
+  
+  // Preparar histórico de mensagens para a API (com suporte a imagens)
+  const hist=c.messages.filter(x=>x.content||x.image).map(x=>{
+    if(x.image){
+      // Formato para visão da Mistral (multimodal)
+      return {
+        role: x.role,
+        content: [
+          { type: 'text', text: x.content || '' },
+          { type: 'image_url', image_url: x.image }
+        ]
+      };
+    }
+    return { role: x.role, content: x.content };
+  });
+  
   const gender=genero()||'F';
   let apiErr=null;
   try{
@@ -478,11 +561,46 @@ ta.addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefa
 $('#send').onclick=()=>{S.streaming?S.abort?.abort():send(ta.value)};
 $$('#chips .chip').forEach(c=>c.onclick=()=>send(c.textContent));
 
+// ── Upload de Imagem ──
+$('#imgBtn').onclick=()=>$('#imgInput').click();
+$('#imgInput').onchange=(e)=>{
+  const file=e.target.files[0];
+  if(!file)return;
+  
+  if(file.size>10*1024*1024){
+    toast('Imagem muito grande (máx 10MB)',true);
+    e.target.value='';
+    return;
+  }
+  
+  if(!file.type.startsWith('image/')){
+    toast('Apenas imagens são permitidas',true);
+    e.target.value='';
+    return;
+  }
+  
+  const reader=new FileReader();
+  reader.onload=(ev)=>{
+    S.pendingImage=ev.target.result;
+    $('#imgPreview').src=ev.target.result;
+    $('#imgPreviewContainer').classList.remove('hidden');
+    $('#cbar').classList.add('cbar-with-img');
+  };
+  reader.readAsDataURL(file);
+  e.target.value='';
+};
+
+$('#imgRemove').onclick=()=>{
+  S.pendingImage=null;
+  $('#imgPreviewContainer').classList.add('hidden');
+  $('#cbar').classList.remove('cbar-with-img');
+};
+
 function openHist(){renderHist();$('#backdrop').classList.add('on');$('#histSheet').classList.add('on')}
 function closeSheet(){$('#backdrop').classList.remove('on');$('#histSheet').classList.remove('on')}
 $('#backdrop').onclick=closeSheet;
 $('#histBtn').onclick=openHist;
-function rel(t){const s=(Date.now()-t)/1e3;return s<60?'agora':s<3600?Math.floor(s/60)+'min':s<86400?Math.floor(s/3600)+'h':Math.floor(s/86400)+'d'}
+function rel(t){const s=(Rel.now()-t)/1e3;return s<60?'agora':s<3600?Math.floor(s/60)+'min':s<86400?Math.floor(s/3600)+'h':Math.floor(s/86400)+'d'}
 function renderHist(){
   const l=$('#histList');l.innerHTML='';
   if(!S.chats.length)l.innerHTML='<p class="fine" style="padding:14px 2px">Nenhuma conversa ainda.</p>';
@@ -502,4 +620,4 @@ ta.placeholder=['Diga algo no meu ouvido…','O que vamos aprontar hoje?','Sem v
 boot();
 </script>
 </body>
-  </html>
+                                                                                                                                    </html>
