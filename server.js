@@ -20,7 +20,7 @@ const codigosPath = path.join(__dirname, 'codigos.json');
 const systemPath  = path.join(__dirname, 'system.txt');
 const system2Path = path.join(__dirname, 'system2.txt');
 
-app.use(express.json({ limit: '1mb' }));
+app.use(express.json({ limit: '50mb' }));
 app.use(express.static(path.join(__dirname, 'public')));
 
 // ──────────────────────────────────────────────
@@ -43,12 +43,10 @@ app.post('/api/ativar', (req, res) => {
 
   const c = lista[idx];
 
-  // código já foi utilizado?
   if (c.usado) {
     return res.status(410).json({ error: 'Código já utilizado. Cada código é de uso único.' });
   }
 
-  // marca como usado (persistência atômica simples)
   lista[idx] = { ...c, usado: true, usadoEm: Date.now() };
   try {
     const novo = Array.isArray(db.codigos) ? { ...db, codigos: lista } : lista;
@@ -65,7 +63,7 @@ app.post('/api/ativar', (req, res) => {
 });
 
 // ──────────────────────────────────────────────
-// CHAT — escolhe o system prompt pelo gênero
+// CHAT — escolhe o system prompt pelo gênero (com suporte a imagens)
 // ──────────────────────────────────────────────
 app.post('/api/chat', async (req, res) => {
   if (!KEY) return res.status(500).json({ error: 'MISTRAL_API_KEY não configurada no .env' });
@@ -82,7 +80,6 @@ app.post('/api/chat', async (req, res) => {
   try {
     system = fs.readFileSync(promptFile, 'utf8').trim();
   } catch (e) {
-    // fallback: se o system2.txt não existe ainda, usa o system.txt
     try { system = fs.readFileSync(systemPath, 'utf8').trim(); } catch {}
     if (!system) console.warn('⚠ Nenhum system prompt encontrado (system.txt / system2.txt)');
   }
@@ -138,5 +135,6 @@ app.listen(PORT, () => {
     }
   }
   console.log('  ✓ Código de uso único habilitado');
-  console.log('  ✓ Escolha de gênero (system.txt / system2.txt) habilitada\n');
+  console.log('  ✓ Escolha de gênero (system.txt / system2.txt) habilitada');
+  console.log('  ✓ Upload de imagens habilitado\n');
 });
