@@ -1,7 +1,7 @@
 {
   "codigos": [
     { "codigo": "246810", "dias": 7,  "nome": "Recarga semanal" },
-    { "codigo": "112233", "dias": 1,  "nome": "Recarga 1 dia" },
+    { "codigo": "000000", "dias": 1,  "nome": "Recarga 1 dia" },
     { "codigo": "999000", "dias": 30, "nome": "Recarga VIP" }
   ]
 }
