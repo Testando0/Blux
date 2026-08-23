@@ -9,68 +9,163 @@ const envPath = path.join(__dirname, '.env');
 dotenv.config({ path: envPath });
 
 const KEY = (process.env.MISTRAL_API_KEY || '').trim().replace(/^['"]+|['"]+$/g, '');
+const MP_ACCESS_TOKEN = (process.env.MP_ACCESS_TOKEN || '').trim();
 
 const app = express();
-// MODELO COM VISÃO - Pixtral 12B
 const MODEL = 'pixtral-12b-2409';
 const MISTRAL_URL = 'https://api.mistral.ai/v1/chat/completions';
 
-const codigosPath = path.join(__dirname, 'codigos.json');
 const systemPath = path.join(__dirname, 'system.txt');
 const system2Path = path.join(__dirname, 'system2.txt');
+const usersPath = path.join(__dirname, 'users.json');
 
 app.use(express.json({ limit: '50mb' }));
 app.use(express.static(path.join(__dirname, 'public')));
 
-app.post('/api/ativar', (req, res) => {
-  const { codigo } = req.body || {};
-  let db;
+// --- Banco de Dados Local de Usuários ---
+const loadUsers = () => {
+  if (!fs.existsSync(usersPath)) fs.writeFileSync(usersPath, '{}', 'utf8');
+  try { return JSON.parse(fs.readFileSync(usersPath, 'utf8')); }
+  catch { return {}; }
+};
+const saveUsers = (db) => fs.writeFileSync(usersPath, JSON.stringify(db, null, 2), 'utf8');
+
+const FREE_MESSAGES = 15;
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+// --- API de Criação de Pagamento (Checkout Pro) ---
+app.post('/api/create-payment', async (req, res) => {
+  const { userId } = req.body || {};
+  if (!userId) return res.status(400).json({ error: 'userId obrigatório' });
+
   try {
-    db = JSON.parse(fs.readFileSync(codigosPath, 'utf8'));
-  } catch {
-    return res.status(500).json({ error: 'codigos.json inválido ou ausente' });
-  }
+    const pref = {
+      items: [
+        {
+          title: 'Blux Premium - Mensagens Ilimitadas (30 dias)',
+          quantity: 1,
+          unit_price: 9.90,
+          currency_id: 'BRL'
+        }
+      ],
+      external_reference: userId,
+      back_urls: {
+        success: `${req.protocol}://${req.get('host')}/`,
+        failure: `${req.protocol}://${req.get('host')}/`,
+        pending: `${req.protocol}://${req.get('host')}/`
+      },
+      auto_return: 'approved'
+    };
 
-  const lista = Array.isArray(db.codigos) ? db.codigos : (Array.isArray(db) ? db : null);
-  if (!lista) return res.status(500).json({ error: 'codigos.json sem estrutura válida' });
+    const mpRes = await fetch('https://api.mercadopago.com/checkout/preferences', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${MP_ACCESS_TOKEN}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(pref)
+    });
 
-  const idx = lista.findIndex(x => String(x.codigo) === String(codigo ?? '').trim());
-  if (idx === -1) return res.status(404).json({ error: 'Código inválido.' });
-
-  const c = lista[idx];
-  if (c.usado) {
-    return res.status(410).json({ error: 'Código já utilizado. Cada código é de uso único.' });
-  }
-
-  lista[idx] = { ...c, usado: true, usadoEm: Date.now() };
-  try {
-    const novo = Array.isArray(db.codigos) ? { ...db, codigos: lista } : lista;
-    fs.writeFileSync(codigosPath, JSON.stringify(novo, null, 2), 'utf8');
+    if (!mpRes.ok) return res.status(500).json({ error: 'Erro no MP', details: await mpRes.text() });
+    const data = await mpRes.json();
+    res.json({ init_point: data.init_point, id: data.id });
   } catch (e) {
-    console.error('Erro ao salvar codigos.json:', e.message);
-    return res.status(500).json({ error: 'Erro ao registrar o código.' });
+    console.error('Erro ao criar pagamento:', e);
+    res.status(500).json({ error: e.message });
   }
-
-  res.json({ dias: Math.max(1, +c.dias || 1), nome: c.nome || '' });
 });
 
+// --- Webhook do Mercado Pago (Ativação Automática) ---
+app.post('/api/webhook', async (req, res) => {
+  const topic = req.query.topic || req.body.type;
+  const id = req.query.id || req.body.data?.id;
+
+  if (topic === 'payment' || req.body.type === 'payment') {
+    try {
+      const payRes = await fetch(`https://api.mercadopago.com/v1/payments/${id}`, {
+        headers: { 'Authorization': `Bearer ${MP_ACCESS_TOKEN}` }
+      });
+      const payment = await payRes.json();
+
+      if (payment.status === 'approved') {
+        const userId = payment.external_reference;
+        if (userId) {
+          const db = loadUsers();
+          db[userId] = {
+            ...db[userId],
+            isPremium: true,
+            premiumUntil: Date.now() + (30 * DAY_MS),
+            freeMsgsLeft: db[userId]?.freeMsgsLeft || FREE_MESSAGES,
+            lastReset: db[userId]?.lastReset || Date.now()
+          };
+          saveUsers(db);
+          console.log(`[MP] Usuário ${userId} atualizado para Premium!`);
+        }
+      }
+    } catch (e) { console.error('Erro no webhook:', e); }
+  }
+  res.sendStatus(200); // Responde 200 para o MP não reenviar
+});
+
+// --- Checar Status do Usuário ---
+app.get('/api/status', (req, res) => {
+  const { userId } = req.query;
+  if (!userId) return res.status(400).json({ error: 'userId obrigatório' });
+
+  const db = loadUsers();
+  let user = db[userId] || { freeMsgsLeft: FREE_MESSAGES, lastReset: Date.now(), isPremium: false };
+  
+  if (Date.now() - user.lastReset > DAY_MS) {
+    user.freeMsgsLeft = FREE_MESSAGES;
+    user.lastReset = Date.now();
+    db[userId] = user;
+    saveUsers(db);
+  }
+
+  res.json({
+    freeMsgsLeft: user.freeMsgsLeft,
+    isPremium: user.isPremium && Date.now() < user.premiumUntil,
+    premiumUntil: user.premiumUntil
+  });
+});
+
+// --- API do Chat ---
 app.post('/api/chat', async (req, res) => {
   if (!KEY) return res.status(500).json({ error: 'MISTRAL_API_KEY não configurada no .env' });
 
-  const { messages, gender } = req.body || {};
-  if (!Array.isArray(messages) || !messages.length) {
-    return res.status(400).json({ error: 'messages inválido' });
+  const { messages, gender, userId } = req.body || {};
+  if (!Array.isArray(messages) || !messages.length) return res.status(400).json({ error: 'messages inválido' });
+  if (!userId) return res.status(400).json({ error: 'userId obrigatório' });
+
+  const db = loadUsers();
+  let user = db[userId];
+  if (!user) {
+    user = { freeMsgsLeft: FREE_MESSAGES, lastReset: Date.now(), isPremium: false };
+    db[userId] = user;
+  }
+
+  if (Date.now() - user.lastReset > DAY_MS) {
+    user.freeMsgsLeft = FREE_MESSAGES;
+    user.lastReset = Date.now();
+  }
+
+  const isPremium = user.isPremium && Date.now() < user.premiumUntil;
+
+  if (!isPremium && user.freeMsgsLeft <= 0) {
+    return res.status(402).json({ error: 'Limite diário atingido', message: 'Suas mensagens gratuitas acabaram por hoje.' });
+  }
+
+  if (!isPremium) {
+    user.freeMsgsLeft -= 1;
+    db[userId] = user;
+    saveUsers(db);
   }
 
   const isFemale = String(gender || '').toUpperCase() === 'F';
   const promptFile = isFemale ? system2Path : systemPath;
   let system = '';
-  try {
-    system = fs.readFileSync(promptFile, 'utf8').trim();
-  } catch (e) {
-    try { system = fs.readFileSync(systemPath, 'utf8').trim(); } catch {}
-    if (!system) console.warn('⚠ Nenhum system prompt encontrado');
-  }
+  try { system = fs.readFileSync(promptFile, 'utf8').trim(); } 
+  catch (e) { try { system = fs.readFileSync(systemPath, 'utf8').trim(); } catch {} }
 
   const full = system ? [{ role: 'system', content: system }, ...messages] : messages;
 
@@ -83,18 +178,11 @@ app.post('/api/chat', async (req, res) => {
     const r = await fetch(MISTRAL_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + KEY },
-      body: JSON.stringify({ 
-        model: MODEL, 
-        messages: full, 
-        temperature: 0.95, 
-        max_tokens: 1400, 
-        stream: true 
-      })
+      body: JSON.stringify({ model: MODEL, messages: full, temperature: 0.95, max_tokens: 1400, stream: true })
     });
     
     if (!r.ok) {
       const t = await r.text();
-      console.error('Erro da API Mistral:', t);
       res.write(`data: ${JSON.stringify({ error: 'Mistral: ' + t.slice(0, 180) })}\n\n`);
       return res.end();
     }
@@ -108,7 +196,6 @@ app.post('/api/chat', async (req, res) => {
     }
     res.end();
   } catch (e) {
-    console.error('Erro no stream:', e.message);
     res.write(`data: ${JSON.stringify({ error: e.message })}\n\n`);
     res.end();
   }
@@ -116,12 +203,6 @@ app.post('/api/chat', async (req, res) => {
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
-  console.log('\n  BLUX +18 rodando → http://localhost:' + PORT + '  (modelo: ' + MODEL + ')');
-  if (KEY) {
-    console.log('  ✓ Chave da Mistral carregada (' + KEY.slice(0, 6) + '...)');
-  } else {
-    console.warn('\n  ⚠ MISTRAL_API_KEY NÃO foi carregada!');
-  }
-  console.log('  ✓ Modelo com visão: ' + MODEL);
-  console.log('  ✓ Upload de imagens habilitado\n');
+  console.log('\n  BLUX +18 rodando → http://localhost:' + PORT);
+  console.log('  ✓ Sistema de mensagens gratuitas (15/dia) e Mercado Pago ativo');
 });
