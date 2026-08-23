@@ -14,13 +14,12 @@
 html,body{height:100%}
 body{color:var(--text);font-family:var(--body);overflow:hidden;-webkit-font-smoothing:antialiased;background:var(--bg)}
 ::selection{background:rgba(212,85,122,.35)}
-::-webkit-scrollbar{width:8px}::-webkit-scrollbar-track{background:transparent}
-::-webkit-scrollbar-thumb{background:var(--line2);border-radius:8px}
+::-webkit-scrollbar{width:8px}::-webkit-scrollbar-track{background:transparent}::-webkit-scrollbar-thumb{background:var(--line2);border-radius:8px}
 button{font-family:inherit;cursor:pointer;-webkit-tap-highlight-color:transparent;border:none;background:none;color:inherit}
 .hidden{display:none!important}
 .fine{font-size:11px;color:var(--dim);line-height:1.5}
+.over{font:500 11px var(--body);letter-spacing:.28em;text-transform:uppercase;color:var(--dim)}
 @keyframes rise{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
-@keyframes shake{20%,60%{transform:translateX(-6px)}40%,80%{transform:translateX(6px)}}
 @keyframes breathe{50%{transform:scale(1.04)}}
 @keyframes tb{30%{transform:translateY(-4px);opacity:.3}}
 @keyframes blink{50%{opacity:.5}}
@@ -54,7 +53,6 @@ header{display:flex;align-items:center;gap:10px;padding:12px 16px;border-bottom:
 #empty{min-height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:32px 22px;text-align:center}
 .simple-orb{width:72px;height:72px;border-radius:50%;background:linear-gradient(135deg,var(--rose),var(--wine));box-shadow:0 10px 30px rgba(212,85,122,.35);animation:breathe 4s ease-in-out infinite;margin-bottom:18px;display:flex;align-items:center;justify-content:center;overflow:hidden;border:2px solid var(--line2)}
 .simple-orb img{width:100%;height:100%;object-fit:cover;display:block}
-#empty .over{margin-bottom:10px;font:500 11px var(--body);letter-spacing:.28em;text-transform:uppercase;color:var(--dim)}
 #empty h2{font:500 clamp(26px,7vw,36px)/1.2 var(--body);letter-spacing:-.015em;margin-bottom:8px}
 #empty>p{color:var(--mut);font:400 14.5px/1.55 var(--body);max-width:300px}
 .chips{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:26px;width:100%;max-width:420px}
@@ -128,7 +126,7 @@ header{display:flex;align-items:center;gap:10px;padding:12px 16px;border-bottom:
 
 <div id="genderPick" class="hidden">
   <div class="gp-box">
-    <p class="over" style="font:500 11px var(--body);letter-spacing:.28em;text-transform:uppercase;color:var(--dim)">Bem-vindo ao BLUX</p>
+    <p class="over">Bem-vindo ao BLUX</p>
     <h2>Escolha sua BLUX</h2>
     <p>Qual versão você quer como companhia?</p>
     <div class="gp-grid">
@@ -218,7 +216,11 @@ function makeId(){
   return 'u'+Date.now().toString(36)+Math.random().toString(36).slice(2,10);
 }
 let userId=store.get('userId',null);
-if(!userId||typeof userId!=='string'||userId.length<6){userId=makeId();store.set('userId',userId)}
+if(!userId||typeof userId!=='string'||userId.length<6){
+  userId=makeId();
+  store.set('userId',userId);
+}
+console.log('[BLUX] userId fixo:',userId);
 const genero=()=>store.get('genero',null);
 
 const IMG={F:'https://i.ibb.co/BVhJTHdt/1004005077.jpg',M:'https://i.ibb.co/FkQbkMG9/1004005079.jpg'};
@@ -304,7 +306,7 @@ function buildNode(m,last){
     return d;
   }
   d.className='msg assistant';
-  const g=genero()||'F',url=IMG[g];
+  const url=IMG[genero()||'F'];
   d.innerHTML='<div class="avatar"><img src="'+url+'" alt="BLUX"></div><div class="bub"><div class="a-content">'+(m.pending?'<span class="tdots"><i></i><i></i><i></i></span>':md(m.content))+'</div><div class="a-actions"><button data-a="copy" title="Copiar">'+SVG.copy+'</button>'+(last?'<button data-a="regen" title="Gerar de novo">'+SVG.regen+'</button>':'')+'</div></div>';
   d.querySelector('[data-a=copy]').onclick=()=>{navigator.clipboard.writeText(m.content);toast('Copiado ✓')};
   const rg=d.querySelector('[data-a=regen]');if(rg)rg.onclick=regen;
