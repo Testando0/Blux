@@ -104,7 +104,7 @@ app.post('/api/webhook', async (req, res) => {
       }
     } catch (e) { console.error('Erro no webhook:', e); }
   }
-  res.sendStatus(200); // Responde 200 para o MP não reenviar
+  res.sendStatus(200);
 });
 
 // --- Checar Status do Usuário ---
@@ -129,7 +129,7 @@ app.get('/api/status', (req, res) => {
   });
 });
 
-// --- API do Chat ---
+// --- API do Chat (CORRIGIDA com timeout e headers enviados apenas após confirmação) ---
 app.post('/api/chat', async (req, res) => {
   if (!KEY) return res.status(500).json({ error: 'MISTRAL_API_KEY não configurada no .env' });
 
@@ -169,24 +169,32 @@ app.post('/api/chat', async (req, res) => {
 
   const full = system ? [{ role: 'system', content: system }, ...messages] : messages;
 
-  res.setHeader('Content-Type', 'text/event-stream; charset=utf-8');
-  res.setHeader('Cache-Control', 'no-cache');
-  res.setHeader('Connection', 'keep-alive');
-  res.flushHeaders?.();
-
   try {
+    // ⏱️ Timeout de 30s para conectar e receber headers da Mistral
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 30000);
+
     const r = await fetch(MISTRAL_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + KEY },
-      body: JSON.stringify({ model: MODEL, messages: full, temperature: 0.95, max_tokens: 1400, stream: true })
+      body: JSON.stringify({ model: MODEL, messages: full, temperature: 0.95, max_tokens: 1400, stream: true }),
+      signal: controller.signal
     });
-    
+
+    clearTimeout(timeoutId);
+
     if (!r.ok) {
       const t = await r.text();
-      res.write(`data: ${JSON.stringify({ error: 'Mistral: ' + t.slice(0, 180) })}\n\n`);
-      return res.end();
+      // Retornamos JSON normal, não SSE, pois ainda não enviamos headers
+      return res.status(502).json({ error: 'Mistral: ' + t.slice(0, 180) });
     }
-    
+
+    // ✅ AGORA sim enviamos os headers de stream SSE (após confirmar que a Mistral respondeu OK)
+    res.setHeader('Content-Type', 'text/event-stream; charset=utf-8');
+    res.setHeader('Cache-Control', 'no-cache');
+    res.setHeader('Connection', 'keep-alive');
+    res.flushHeaders?.();
+
     const reader = r.body.getReader();
     req.on('close', () => reader.cancel().catch(() => {}));
     for (;;) {
@@ -196,8 +204,14 @@ app.post('/api/chat', async (req, res) => {
     }
     res.end();
   } catch (e) {
-    res.write(`data: ${JSON.stringify({ error: e.message })}\n\n`);
-    res.end();
+    // Se der erro (ex: timeout), e ainda não enviamos headers, retornamos JSON limpo
+    if (!res.headersSent) {
+      return res.status(500).json({ error: e.name === 'AbortError' ? 'Timeout: A IA demorou muito' : e.message });
+    } else {
+      // Se já enviamos headers, mandamos erro via SSE e fechamos
+      res.write(`data: ${JSON.stringify({ error: e.name === 'AbortError' ? 'Timeout: A IA demorou muito' : e.message })}\n\n`);
+      res.end();
+    }
   }
 });
 
@@ -205,4 +219,5 @@ const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log('\n  BLUX +18 rodando → http://localhost:' + PORT);
   console.log('  ✓ Sistema de mensagens gratuitas (15/dia) e Mercado Pago ativo');
+  if (KEY) console.log('  ✓ Chave da Mistral carregada'); else console.warn('  ⚠ MISTRAL_API_KEY NÃO foi carregada!');
 });
