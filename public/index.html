@@ -220,7 +220,6 @@ if(!userId||typeof userId!=='string'||userId.length<6){
   userId=makeId();
   store.set('userId',userId);
 }
-console.log('[BLUX] userId fixo:',userId);
 const genero=()=>store.get('genero',null);
 
 const IMG={F:'https://i.ibb.co/BVhJTHdt/1004005077.jpg',M:'https://i.ibb.co/FkQbkMG9/1004005079.jpg'};
@@ -370,6 +369,8 @@ async function stream(){
     m.pending=false;el.innerHTML=md(m.content);maybeScroll();
   };
 
+  const clientTimeout=setTimeout(()=>{if(S.streaming)S.abort.abort()},120000);
+
   try{
     const r=await fetch('/api/chat',{
       method:'POST',signal:S.abort.signal,
@@ -378,6 +379,7 @@ async function stream(){
     });
 
     if(r.status===402){
+      clearTimeout(clientTimeout);
       aplicarFrase('erro');
       m.pending=false;S.streaming=false;S.abort=null;uiStream();
       saveChats();renderHist();renderAll();
@@ -387,6 +389,7 @@ async function stream(){
     }
 
     if(!r.ok){
+      clearTimeout(clientTimeout);
       aplicarFrase('erro');
       m.pending=false;S.streaming=false;S.abort=null;uiStream();
       saveChats();renderHist();renderAll();
@@ -415,8 +418,10 @@ async function stream(){
         }
       }
     }
+    clearTimeout(clientTimeout);
     if(teveErroApi&&!m.content)aplicarFrase('erro');
   }catch(e){
+    clearTimeout(clientTimeout);
     if(e.name==='AbortError')aplicarFrase('int');
     else aplicarFrase('erro');
   }
@@ -498,4 +503,4 @@ ta.placeholder=['Diga algo no meu ouvido…','O que vamos aprontar hoje?','Sem v
 boot();
 </script>
 </body>
-  </html>
+        </html>
