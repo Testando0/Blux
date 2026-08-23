@@ -23,31 +23,44 @@ app.use(express.json({ limit: '50mb' }));
 app.use(express.static(path.join(__dirname, 'public')));
 
 function loadUsers() {
+  if (!fs.existsSync(usersPath)) {
+    fs.writeFileSync(usersPath, '{}', 'utf8');
+    console.log('[DB] users.json criado em:', usersPath);
+  }
   try {
-    if (!fs.existsSync(usersPath)) fs.writeFileSync(usersPath, '{}', 'utf8');
     return JSON.parse(fs.readFileSync(usersPath, 'utf8'));
-  } catch { return {}; }
+  } catch {
+    console.error('[DB] users.json corrompido, recriando');
+    fs.writeFileSync(usersPath, '{}', 'utf8');
+    return {};
+  }
 }
-function saveUsers(d) {
-  try { fs.writeFileSync(usersPath, JSON.stringify(d, null, 2), 'utf8'); }
-  catch (e) { console.error('[saveUsers]', e.message); }
+
+function saveUsers(db) {
+  const json = JSON.stringify(db, null, 2);
+  fs.writeFileSync(usersPath, json, 'utf8');
+  const check = fs.readFileSync(usersPath, 'utf8');
+  if (check !== json) throw new Error('Falha na gravação do users.json');
+  console.log('[DB] users.json salvo e verificado');
 }
 
 app.get('/api/status', (req, res) => {
   const userId = String(req.query.userId || '').trim();
-  if (!userId) return res.status(400).json({ error: 'userId' });
+  if (!userId) return res.status(400).json({ error: 'userId obrigatório' });
   const db = loadUsers();
   let u = db[userId] || { free: FREE_MSGS, reset: Date.now(), premium: 0 };
   if (Date.now() - u.reset > DAY) {
-    u.free = FREE_MSGS; u.reset = Date.now();
-    db[userId] = u; saveUsers(db);
+    u.free = FREE_MSGS;
+    u.reset = Date.now();
+    db[userId] = u;
+    saveUsers(db);
   }
   res.json({ free: u.free, premium: Date.now() < u.premium });
 });
 
 app.post('/api/pay', async (req, res) => {
   const userId = String(req.body?.userId || '').trim();
-  if (!userId) return res.status(400).json({ error: 'userId' });
+  if (!userId) return res.status(400).json({ error: 'userId obrigatório' });
   try {
     const r = await fetch('https://api.mercadopago.com/checkout/preferences', {
       method: 'POST',
@@ -100,23 +113,32 @@ app.post('/api/chat', async (req, res) => {
 
   const db = loadUsers();
   let u = db[userId] || { free: FREE_MSGS, reset: Date.now(), premium: 0 };
-  if (Date.now() - u.reset > DAY) { u.free = FREE_MSGS; u.reset = Date.now(); }
+
+  if (Date.now() - u.reset > DAY) {
+    u.free = FREE_MSGS;
+    u.reset = Date.now();
+  }
+
   const premium = Date.now() < u.premium;
 
+  console.log(`[CHAT] user=${userId} free=${u.free} premium=${premium}`);
+
   if (!premium && u.free <= 0) {
+    console.log(`[CHAT] BLOQUEADO — ${userId} atingiu o limite`);
     return res.status(402).json({ error: 'Suas mensagens gratuitas de hoje acabaram.' });
   }
+
   if (!premium) {
     u.free--;
     db[userId] = u;
     saveUsers(db);
-    console.log(`[CHAT] ${userId} restante: ${u.free}`);
+    console.log(`[CHAT] user=${userId} restante=${u.free}`);
   }
 
   const isFemale = String(gender || '').toUpperCase() === 'F';
   const promptFile = isFemale ? system2Path : systemPath;
   let system = '';
-  try { system = fs.readFileSync(promptFile, 'utf8').trim(); } catch (e) {
+  try { system = fs.readFileSync(promptFile, 'utf8').trim(); } catch {
     try { system = fs.readFileSync(systemPath, 'utf8').trim(); } catch {}
     if (!system) console.warn('⚠ Nenhum system prompt encontrado');
   }
@@ -132,13 +154,7 @@ app.post('/api/chat', async (req, res) => {
     const r = await fetch(MISTRAL_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + KEY },
-      body: JSON.stringify({
-        model: MODEL,
-        messages: full,
-        temperature: 0.95,
-        max_tokens: 1400,
-        stream: true
-      })
+      body: JSON.stringify({ model: MODEL, messages: full, temperature: 0.95, max_tokens: 1400, stream: true })
     });
 
     if (!r.ok) {
@@ -165,10 +181,9 @@ app.post('/api/chat', async (req, res) => {
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
-  console.log('\n  BLUX +18 rodando → http://localhost:' + PORT + '  (modelo: ' + MODEL + ')');
-  if (KEY) console.log('  ✓ Chave da Mistral carregada (' + KEY.slice(0, 6) + '...)');
-  else console.warn('\n  ⚠ MISTRAL_API_KEY NÃO foi carregada!');
-  console.log('  ✓ Modelo com visão: ' + MODEL);
-  console.log('  ✓ Upload de imagens habilitado');
-  console.log('  ✓ Mensagens grátis/dia: ' + FREE_MSGS + '\n');
+  console.log('\n  BLUX +18 → http://localhost:' + PORT);
+  console.log('  ✓ Mistral:', KEY ? 'OK (' + KEY.slice(0, 6) + '...)' : 'AUSENTE');
+  console.log('  ✓ Mercado Pago:', MP_TOKEN ? 'OK' : 'AUSENTE');
+  console.log('  ✓ Mensagens grátis/dia:', FREE_MSGS);
+  console.log('  ✓ users.json em:', usersPath, '\n');
 });
