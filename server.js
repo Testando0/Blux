@@ -7,13 +7,12 @@ import { fileURLToPath } from 'node:url';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 dotenv.config({ path: path.join(__dirname, '.env') });
 
-const KEY = (process.env.MISTRAL_API_KEY || '').trim();
+const KEY = (process.env.MISTRAL_API_KEY || '').trim().replace(/^['"]+|['"]+$/g, '');
 const MP_TOKEN = (process.env.MP_ACCESS_TOKEN || '').trim();
 const MODEL = 'pixtral-12b-2409';
 const MISTRAL_URL = 'https://api.mistral.ai/v1/chat/completions';
 const FREE_MSGS = 15;
 const DAY = 864e5;
-const INACTIVITY_MS = 30000;
 
 const systemPath = path.join(__dirname, 'system.txt');
 const system2Path = path.join(__dirname, 'system2.txt');
@@ -111,79 +110,65 @@ app.post('/api/chat', async (req, res) => {
     u.free--;
     db[userId] = u;
     saveUsers(db);
+    console.log(`[CHAT] ${userId} restante: ${u.free}`);
   }
 
-  const isF = String(gender || '').toUpperCase() === 'F';
+  const isFemale = String(gender || '').toUpperCase() === 'F';
+  const promptFile = isFemale ? system2Path : systemPath;
   let system = '';
-  try { system = fs.readFileSync(isF ? system2Path : systemPath, 'utf8').trim(); } catch {
+  try { system = fs.readFileSync(promptFile, 'utf8').trim(); } catch (e) {
     try { system = fs.readFileSync(systemPath, 'utf8').trim(); } catch {}
+    if (!system) console.warn('⚠ Nenhum system prompt encontrado');
   }
+
   const full = system ? [{ role: 'system', content: system }, ...messages] : messages;
-
-  const ctrl = new AbortController();
-  let lastActivity = Date.now();
-
-  const inactivityWatch = setInterval(() => {
-    if (Date.now() - lastActivity > INACTIVITY_MS) {
-      console.log('[CHAT] Inatividade detectada, abortando stream');
-      ctrl.abort();
-      clearInterval(inactivityWatch);
-    }
-  }, 3000);
-
-  const connectTimer = setTimeout(() => ctrl.abort(), 15000);
 
   res.setHeader('Content-Type', 'text/event-stream; charset=utf-8');
   res.setHeader('Cache-Control', 'no-cache');
   res.setHeader('Connection', 'keep-alive');
   res.flushHeaders?.();
 
-  req.on('close', () => {
-    clearInterval(inactivityWatch);
-    clearTimeout(connectTimer);
-    ctrl.abort();
-  });
-
   try {
     const r = await fetch(MISTRAL_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + KEY },
-      body: JSON.stringify({ model: MODEL, messages: full, temperature: 0.95, max_tokens: 1400, stream: true }),
-      signal: ctrl.signal
+      body: JSON.stringify({
+        model: MODEL,
+        messages: full,
+        temperature: 0.95,
+        max_tokens: 1400,
+        stream: true
+      })
     });
-    clearTimeout(connectTimer);
 
     if (!r.ok) {
-      clearInterval(inactivityWatch);
       const t = await r.text();
-      res.write(`data: ${JSON.stringify({ error: 'Mistral: ' + t.slice(0, 200) })}\n\n`);
+      console.error('Erro da API Mistral:', t);
+      res.write(`data: ${JSON.stringify({ error: 'Mistral: ' + t.slice(0, 180) })}\n\n`);
       return res.end();
     }
 
     const reader = r.body.getReader();
+    req.on('close', () => reader.cancel().catch(() => {}));
     for (;;) {
       const { done, value } = await reader.read();
       if (done) break;
-      lastActivity = Date.now();
       res.write(Buffer.from(value));
     }
-    clearInterval(inactivityWatch);
     res.end();
   } catch (e) {
-    clearInterval(inactivityWatch);
-    clearTimeout(connectTimer);
-    const msg = e.name === 'AbortError' ? 'A IA demorou demais. Tenta de novo.' : e.message;
-    if (!res.writableEnded) {
-      res.write(`data: ${JSON.stringify({ error: msg })}\n\n`);
-      res.end();
-    }
+    console.error('Erro no stream:', e.message);
+    res.write(`data: ${JSON.stringify({ error: e.message })}\n\n`);
+    res.end();
   }
 });
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
-  console.log('\n  BLUX +18 → http://localhost:' + PORT);
-  console.log('  ✓ Mistral:', KEY ? 'OK' : 'AUSENTE');
-  console.log('  ✓ Mercado Pago:', MP_TOKEN ? 'OK' : 'AUSENTE');
-  console.log('  ✓ Mensagens grátis/dia:', FREE_MSGS, '\n');
+  console.log('\n  BLUX +18 rodando → http://localhost:' + PORT + '  (modelo: ' + MODEL + ')');
+  if (KEY) console.log('  ✓ Chave da Mistral carregada (' + KEY.slice(0, 6) + '...)');
+  else console.warn('\n  ⚠ MISTRAL_API_KEY NÃO foi carregada!');
+  console.log('  ✓ Modelo com visão: ' + MODEL);
+  console.log('  ✓ Upload de imagens habilitado');
+  console.log('  ✓ Mensagens grátis/dia: ' + FREE_MSGS + '\n');
 });
