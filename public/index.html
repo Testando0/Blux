@@ -210,15 +210,11 @@ const store={
 };
 
 function makeId(){
-  try{ if(crypto.randomUUID) return crypto.randomUUID(); }catch{}
+  try{if(crypto.randomUUID)return crypto.randomUUID()}catch{}
   return 'xxxx-xxxx-xxxx-xxxx'.replace(/x/g,()=>Math.floor(Math.random()*16).toString(16));
 }
 let userId=store.get('userId',null);
-if(!userId||typeof userId!=='string'||userId.length<8){
-  userId=makeId();
-  store.set('userId',userId);
-}
-console.log('[BLUX] userId:',userId);
+if(!userId||typeof userId!=='string'||userId.length<8){userId=makeId();store.set('userId',userId)}
 const genero=()=>store.get('genero',null);
 
 const IMG={F:'https://i.ibb.co/BVhJTHdt/1004005077.jpg',M:'https://i.ibb.co/FkQbkMG9/1004005079.jpg'};
@@ -256,8 +252,8 @@ async function fetchStatus(){
     const r=await fetch('/api/status?userId='+encodeURIComponent(userId));
     const d=await r.json();
     const chip=$('#msgsChip');
-    if(d.premium){chip.textContent='✨ Premium';chip.className='dchip prem';}
-    else{chip.textContent='✉️ '+d.free+' msgs';chip.className='dchip'+(d.free<=3?' warn':'');}
+    if(d.premium){chip.textContent='✨ Premium';chip.className='dchip prem'}
+    else{chip.textContent='✉️ '+d.free+' msgs';chip.className='dchip'+(d.free<=3?' warn':'')}
     return d;
   }catch{return null}
 }
@@ -364,6 +360,20 @@ async function stream(){
     m.content=int?pick(FRASES_INT):pick(FRASES_ERRO);
     m.pending=false;el.innerHTML=md(m.content);maybeScroll();
   };
+  const finalizar=()=>{
+    m.pending=false;S.streaming=false;S.abort=null;uiStream();
+    if(!m.content)c.messages.pop();
+    saveChats();renderHist();renderAll();fetchStatus();
+  };
+
+  let inactivityTimer=null;
+  const resetInactivity=()=>{
+    if(inactivityTimer)clearTimeout(inactivityTimer);
+    inactivityTimer=setTimeout(()=>{
+      if(S.streaming)S.abort.abort();
+    },30000);
+  };
+  resetInactivity();
 
   try{
     const r=await fetch('/api/chat',{
@@ -374,6 +384,7 @@ async function stream(){
     });
 
     if(r.status===402){
+      clearTimeout(inactivityTimer);
       m.pending=false;c.messages.pop();
       S.streaming=false;S.abort=null;uiStream();
       saveChats();renderAll();
@@ -381,13 +392,18 @@ async function stream(){
       fetchStatus();
       return;
     }
-    if(!r.ok){setErro(false);S.streaming=false;S.abort=null;uiStream();saveChats();renderHist();renderAll();fetchStatus();return}
+    if(!r.ok){
+      clearTimeout(inactivityTimer);
+      setErro(false);finalizar();
+      return;
+    }
 
     const rd=r.body.getReader(),dec=new TextDecoder();
     let buf='',apiErr=false;
     for(;;){
       const{done,value}=await rd.read();
       if(done)break;
+      resetInactivity();
       buf+=dec.decode(value,{stream:true});
       let i;
       while((i=buf.indexOf('\n'))>=0){
@@ -404,14 +420,15 @@ async function stream(){
         }
       }
     }
+    clearTimeout(inactivityTimer);
     if(apiErr&&!m.content)setErro(false);
+    finalizar();
   }catch(e){
+    clearTimeout(inactivityTimer);
     if(e.name==='AbortError')setErro(true);
     else setErro(false);
+    finalizar();
   }
-  m.pending=false;S.streaming=false;S.abort=null;uiStream();
-  if(!m.content)c.messages.pop();
-  saveChats();renderHist();renderAll();fetchStatus();
 }
 
 function regen(){
@@ -486,4 +503,4 @@ ta.placeholder=['Diga algo no meu ouvido…','O que vamos aprontar hoje?','Sem v
 boot();
 </script>
 </body>
-  </html>
+          </html>
