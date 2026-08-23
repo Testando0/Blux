@@ -18,6 +18,7 @@ body{color:var(--text);font-family:var(--body);overflow:hidden;-webkit-font-smoo
 button{font-family:inherit;cursor:pointer;-webkit-tap-highlight-color:transparent;border:none;background:none;color:inherit}
 .hidden{display:none!important}
 .fine{font-size:11px;color:var(--dim);line-height:1.5}
+.over{font:500 11px var(--body);letter-spacing:.28em;text-transform:uppercase;color:var(--dim)}
 @keyframes rise{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
 @keyframes breathe{50%{transform:scale(1.04)}}
 @keyframes tb{30%{transform:translateY(-4px);opacity:.3}}
@@ -52,7 +53,6 @@ header{display:flex;align-items:center;gap:10px;padding:12px 16px;border-bottom:
 #empty{min-height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:32px 22px;text-align:center}
 .simple-orb{width:72px;height:72px;border-radius:50%;background:linear-gradient(135deg,var(--rose),var(--wine));box-shadow:0 10px 30px rgba(212,85,122,.35);animation:breathe 4s ease-in-out infinite;margin-bottom:18px;display:flex;align-items:center;justify-content:center;overflow:hidden;border:2px solid var(--line2)}
 .simple-orb img{width:100%;height:100%;object-fit:cover;display:block}
-#empty .over{margin-bottom:10px;font:500 11px var(--body);letter-spacing:.28em;text-transform:uppercase;color:var(--dim)}
 #empty h2{font:500 clamp(26px,7vw,36px)/1.2 var(--body);letter-spacing:-.015em;margin-bottom:8px}
 #empty>p{color:var(--mut);font:400 14.5px/1.55 var(--body);max-width:300px}
 .chips{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:26px;width:100%;max-width:420px}
@@ -124,7 +124,7 @@ header{display:flex;align-items:center;gap:10px;padding:12px 16px;border-bottom:
 
 <div id="genderPick" class="hidden">
   <div class="gp-box">
-    <p class="over" style="font:500 11px var(--body);letter-spacing:.28em;text-transform:uppercase;color:var(--dim)">Bem-vindo ao BLUX</p>
+    <p class="over">Bem-vindo ao BLUX</p>
     <h2>Escolha sua BLUX</h2>
     <p>Qual versão você quer como companhia?</p>
     <div class="gp-grid">
@@ -208,8 +208,17 @@ const store={
   set:(k,v)=>localStorage.setItem('blux_'+k,JSON.stringify(v)),
   del:k=>localStorage.removeItem('blux_'+k)
 };
+
+function makeId(){
+  try{ if(crypto.randomUUID) return crypto.randomUUID(); }catch{}
+  return 'xxxx-xxxx-xxxx-xxxx'.replace(/x/g,()=>Math.floor(Math.random()*16).toString(16));
+}
 let userId=store.get('userId',null);
-if(!userId){userId=crypto.randomUUID();store.set('userId',userId)}
+if(!userId||typeof userId!=='string'||userId.length<8){
+  userId=makeId();
+  store.set('userId',userId);
+}
+console.log('[BLUX] userId:',userId);
 const genero=()=>store.get('genero',null);
 
 const IMG={F:'https://i.ibb.co/BVhJTHdt/1004005077.jpg',M:'https://i.ibb.co/FkQbkMG9/1004005079.jpg'};
@@ -244,7 +253,7 @@ function aplicarFotoUI(){
 
 async function fetchStatus(){
   try{
-    const r=await fetch('/api/status?userId='+userId);
+    const r=await fetch('/api/status?userId='+encodeURIComponent(userId));
     const d=await r.json();
     const chip=$('#msgsChip');
     if(d.premium){chip.textContent='✨ Premium';chip.className='dchip prem';}
@@ -361,7 +370,7 @@ async function stream(){
       method:'POST',
       signal:S.abort.signal,
       headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({messages:hist,gender,userId})
+      body:JSON.stringify({messages:hist,gender,userId:userId})
     });
 
     if(r.status===402){
@@ -369,6 +378,7 @@ async function stream(){
       S.streaming=false;S.abort=null;uiStream();
       saveChats();renderAll();
       $('#payBk').classList.add('on');$('#paySheet').classList.add('on');
+      fetchStatus();
       return;
     }
     if(!r.ok){setErro(false);S.streaming=false;S.abort=null;uiStream();saveChats();renderHist();renderAll();fetchStatus();return}
@@ -460,7 +470,7 @@ $('#premBtn').onclick=()=>{$('#payBk').classList.add('on');$('#paySheet').classL
 $('#payBtn').onclick=async()=>{
   $('#payBtn').textContent='Gerando…';$('#payBtn').disabled=true;
   try{
-    const r=await fetch('/api/pay',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({userId})});
+    const r=await fetch('/api/pay',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({userId:userId})});
     const d=await r.json();
     if(d.url){window.open(d.url,'_blank');toast('Pagamento aberto. Aguarde a confirmação.')}
     else toast(d.error||'Erro ao gerar pagamento',true);
@@ -476,4 +486,4 @@ ta.placeholder=['Diga algo no meu ouvido…','O que vamos aprontar hoje?','Sem v
 boot();
 </script>
 </body>
-                                                        </html>
+  </html>
