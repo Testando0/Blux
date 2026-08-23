@@ -13,6 +13,7 @@ const MODEL = 'pixtral-12b-2409';
 const MISTRAL_URL = 'https://api.mistral.ai/v1/chat/completions';
 const FREE_MSGS = 15;
 const DAY = 864e5;
+const INACTIVITY_MS = 30000;
 
 const systemPath = path.join(__dirname, 'system.txt');
 const system2Path = path.join(__dirname, 'system2.txt');
@@ -29,26 +30,25 @@ function loadUsers() {
   } catch { return {}; }
 }
 function saveUsers(d) {
-  fs.writeFileSync(usersPath, JSON.stringify(d, null, 2), 'utf8');
+  try { fs.writeFileSync(usersPath, JSON.stringify(d, null, 2), 'utf8'); }
+  catch (e) { console.error('[saveUsers]', e.message); }
 }
 
 app.get('/api/status', (req, res) => {
   const userId = String(req.query.userId || '').trim();
-  if (!userId) return res.status(400).json({ error: 'userId obrigatório' });
+  if (!userId) return res.status(400).json({ error: 'userId' });
   const db = loadUsers();
   let u = db[userId] || { free: FREE_MSGS, reset: Date.now(), premium: 0 };
   if (Date.now() - u.reset > DAY) {
-    u.free = FREE_MSGS;
-    u.reset = Date.now();
-    db[userId] = u;
-    saveUsers(db);
+    u.free = FREE_MSGS; u.reset = Date.now();
+    db[userId] = u; saveUsers(db);
   }
   res.json({ free: u.free, premium: Date.now() < u.premium });
 });
 
 app.post('/api/pay', async (req, res) => {
   const userId = String(req.body?.userId || '').trim();
-  if (!userId) return res.status(400).json({ error: 'userId obrigatório' });
+  if (!userId) return res.status(400).json({ error: 'userId' });
   try {
     const r = await fetch('https://api.mercadopago.com/checkout/preferences', {
       method: 'POST',
@@ -86,7 +86,7 @@ app.post('/api/webhook', async (req, res) => {
         saveUsers(db);
         console.log('[MP] Premium ativado:', p.external_reference);
       }
-    } catch (e) { console.error('[MP webhook]', e.message); }
+    } catch (e) { console.error('[MP]', e.message); }
   }
   res.sendStatus(200);
 });
@@ -101,25 +101,16 @@ app.post('/api/chat', async (req, res) => {
 
   const db = loadUsers();
   let u = db[userId] || { free: FREE_MSGS, reset: Date.now(), premium: 0 };
-
-  if (Date.now() - u.reset > DAY) {
-    u.free = FREE_MSGS;
-    u.reset = Date.now();
-  }
-
+  if (Date.now() - u.reset > DAY) { u.free = FREE_MSGS; u.reset = Date.now(); }
   const premium = Date.now() < u.premium;
-
-  console.log(`[CHAT] user=${userId} free=${u.free} premium=${premium}`);
 
   if (!premium && u.free <= 0) {
     return res.status(402).json({ error: 'Suas mensagens gratuitas de hoje acabaram.' });
   }
-
   if (!premium) {
     u.free--;
     db[userId] = u;
     saveUsers(db);
-    console.log(`[CHAT] user=${userId} restante=${u.free}`);
   }
 
   const isF = String(gender || '').toUpperCase() === 'F';
@@ -129,13 +120,29 @@ app.post('/api/chat', async (req, res) => {
   }
   const full = system ? [{ role: 'system', content: system }, ...messages] : messages;
 
+  const ctrl = new AbortController();
+  let lastActivity = Date.now();
+
+  const inactivityWatch = setInterval(() => {
+    if (Date.now() - lastActivity > INACTIVITY_MS) {
+      console.log('[CHAT] Inatividade detectada, abortando stream');
+      ctrl.abort();
+      clearInterval(inactivityWatch);
+    }
+  }, 3000);
+
+  const connectTimer = setTimeout(() => ctrl.abort(), 15000);
+
   res.setHeader('Content-Type', 'text/event-stream; charset=utf-8');
   res.setHeader('Cache-Control', 'no-cache');
   res.setHeader('Connection', 'keep-alive');
   res.flushHeaders?.();
 
-  const ctrl = new AbortController();
-  const timer = setTimeout(() => ctrl.abort(), 60000);
+  req.on('close', () => {
+    clearInterval(inactivityWatch);
+    clearTimeout(connectTimer);
+    ctrl.abort();
+  });
 
   try {
     const r = await fetch(MISTRAL_URL, {
@@ -144,27 +151,32 @@ app.post('/api/chat', async (req, res) => {
       body: JSON.stringify({ model: MODEL, messages: full, temperature: 0.95, max_tokens: 1400, stream: true }),
       signal: ctrl.signal
     });
-    clearTimeout(timer);
+    clearTimeout(connectTimer);
 
     if (!r.ok) {
+      clearInterval(inactivityWatch);
       const t = await r.text();
-      res.write(`data: ${JSON.stringify({ error: 'Mistral: ' + t.slice(0, 180) })}\n\n`);
+      res.write(`data: ${JSON.stringify({ error: 'Mistral: ' + t.slice(0, 200) })}\n\n`);
       return res.end();
     }
 
     const reader = r.body.getReader();
-    req.on('close', () => reader.cancel().catch(() => {}));
     for (;;) {
       const { done, value } = await reader.read();
       if (done) break;
+      lastActivity = Date.now();
       res.write(Buffer.from(value));
     }
+    clearInterval(inactivityWatch);
     res.end();
   } catch (e) {
-    clearTimeout(timer);
+    clearInterval(inactivityWatch);
+    clearTimeout(connectTimer);
     const msg = e.name === 'AbortError' ? 'A IA demorou demais. Tenta de novo.' : e.message;
-    res.write(`data: ${JSON.stringify({ error: msg })}\n\n`);
-    res.end();
+    if (!res.writableEnded) {
+      res.write(`data: ${JSON.stringify({ error: msg })}\n\n`);
+      res.end();
+    }
   }
 });
 
@@ -173,6 +185,5 @@ app.listen(PORT, () => {
   console.log('\n  BLUX +18 → http://localhost:' + PORT);
   console.log('  ✓ Mistral:', KEY ? 'OK' : 'AUSENTE');
   console.log('  ✓ Mercado Pago:', MP_TOKEN ? 'OK' : 'AUSENTE');
-  console.log('  ✓ Mensagens grátis/dia:', FREE_MSGS);
-  console.log('  ✓ users.json:', usersPath, '\n');
+  console.log('  ✓ Mensagens grátis/dia:', FREE_MSGS, '\n');
 });
