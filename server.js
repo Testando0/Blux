@@ -13,7 +13,7 @@ dotenv.config({ path: envPath });
 const KEY = (process.env.MISTRAL_API_KEY || '').trim().replace(/^['"]+|['"]+$/g, '');
 
 const app = express();
-const MODEL = 'ministral-8b-latest';
+const MODEL = 'mistral-medium-latest';
 const MISTRAL_URL = 'https://api.mistral.ai/v1/chat/completions';
 
 const codigosPath = path.join(__dirname, 'codigos.json');
