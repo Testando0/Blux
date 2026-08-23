@@ -5,27 +5,23 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-
-// carrega o .env que fica AO LADO do server.js
 const envPath = path.join(__dirname, '.env');
 dotenv.config({ path: envPath });
 
 const KEY = (process.env.MISTRAL_API_KEY || '').trim().replace(/^['"]+|['"]+$/g, '');
 
 const app = express();
-const MODEL = 'mistral-medium-latest';
+// MODELO COM VISÃO - Pixtral 12B
+const MODEL = 'pixtral-12b-2409';
 const MISTRAL_URL = 'https://api.mistral.ai/v1/chat/completions';
 
 const codigosPath = path.join(__dirname, 'codigos.json');
-const systemPath  = path.join(__dirname, 'system.txt');
+const systemPath = path.join(__dirname, 'system.txt');
 const system2Path = path.join(__dirname, 'system2.txt');
 
 app.use(express.json({ limit: '50mb' }));
 app.use(express.static(path.join(__dirname, 'public')));
 
-// ──────────────────────────────────────────────
-// ATIVAR CÓDIGO (uso único — marca como "usado")
-// ──────────────────────────────────────────────
 app.post('/api/ativar', (req, res) => {
   const { codigo } = req.body || {};
   let db;
@@ -42,7 +38,6 @@ app.post('/api/ativar', (req, res) => {
   if (idx === -1) return res.status(404).json({ error: 'Código inválido.' });
 
   const c = lista[idx];
-
   if (c.usado) {
     return res.status(410).json({ error: 'Código já utilizado. Cada código é de uso único.' });
   }
@@ -56,15 +51,9 @@ app.post('/api/ativar', (req, res) => {
     return res.status(500).json({ error: 'Erro ao registrar o código.' });
   }
 
-  res.json({
-    dias: Math.max(1, +c.dias || 1),
-    nome: c.nome || ''
-  });
+  res.json({ dias: Math.max(1, +c.dias || 1), nome: c.nome || '' });
 });
 
-// ──────────────────────────────────────────────
-// CHAT — escolhe o system prompt pelo gênero (com suporte a imagens)
-// ──────────────────────────────────────────────
 app.post('/api/chat', async (req, res) => {
   if (!KEY) return res.status(500).json({ error: 'MISTRAL_API_KEY não configurada no .env' });
 
@@ -73,7 +62,6 @@ app.post('/api/chat', async (req, res) => {
     return res.status(400).json({ error: 'messages inválido' });
   }
 
-  // escolhe o system prompt conforme o gênero
   const isFemale = String(gender || '').toUpperCase() === 'F';
   const promptFile = isFemale ? system2Path : systemPath;
   let system = '';
@@ -81,7 +69,7 @@ app.post('/api/chat', async (req, res) => {
     system = fs.readFileSync(promptFile, 'utf8').trim();
   } catch (e) {
     try { system = fs.readFileSync(systemPath, 'utf8').trim(); } catch {}
-    if (!system) console.warn('⚠ Nenhum system prompt encontrado (system.txt / system2.txt)');
+    if (!system) console.warn('⚠ Nenhum system prompt encontrado');
   }
 
   const full = system ? [{ role: 'system', content: system }, ...messages] : messages;
@@ -95,13 +83,22 @@ app.post('/api/chat', async (req, res) => {
     const r = await fetch(MISTRAL_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + KEY },
-      body: JSON.stringify({ model: MODEL, messages: full, temperature: 0.95, max_tokens: 1400, stream: true })
+      body: JSON.stringify({ 
+        model: MODEL, 
+        messages: full, 
+        temperature: 0.95, 
+        max_tokens: 1400, 
+        stream: true 
+      })
     });
+    
     if (!r.ok) {
       const t = await r.text();
+      console.error('Erro da API Mistral:', t);
       res.write(`data: ${JSON.stringify({ error: 'Mistral: ' + t.slice(0, 180) })}\n\n`);
       return res.end();
     }
+    
     const reader = r.body.getReader();
     req.on('close', () => reader.cancel().catch(() => {}));
     for (;;) {
@@ -111,6 +108,7 @@ app.post('/api/chat', async (req, res) => {
     }
     res.end();
   } catch (e) {
+    console.error('Erro no stream:', e.message);
     res.write(`data: ${JSON.stringify({ error: e.message })}\n\n`);
     res.end();
   }
@@ -123,18 +121,7 @@ app.listen(PORT, () => {
     console.log('  ✓ Chave da Mistral carregada (' + KEY.slice(0, 6) + '...)');
   } else {
     console.warn('\n  ⚠ MISTRAL_API_KEY NÃO foi carregada!');
-    if (!fs.existsSync(envPath)) {
-      console.warn('  → O arquivo .env NÃO existe aqui: ' + envPath);
-      console.warn('    Precisa ficar na MESMA pasta do server.js.');
-    } else {
-      const linhas = fs.readFileSync(envPath, 'utf8').replace(/^\uFEFF/, '').split('\n')
-        .map(l => l.trim()).filter(l => l && !l.startsWith('#'));
-      const chaves = linhas.map(l => l.split('=')[0].trim());
-      console.warn('  → .env lido. Chaves: ' + (chaves.join(', ') || '(nenhuma)'));
-      if (!chaves.includes('MISTRAL_API_KEY')) console.warn('    → Falta a linha: MISTRAL_API_KEY=sua_chave');
-    }
   }
-  console.log('  ✓ Código de uso único habilitado');
-  console.log('  ✓ Escolha de gênero (system.txt / system2.txt) habilitada');
+  console.log('  ✓ Modelo com visão: ' + MODEL);
   console.log('  ✓ Upload de imagens habilitado\n');
 });
