@@ -25,12 +25,10 @@ app.use(express.static(path.join(__dirname, 'public')));
 function loadUsers() {
   if (!fs.existsSync(usersPath)) {
     fs.writeFileSync(usersPath, '{}', 'utf8');
-    console.log('[DB] users.json criado em:', usersPath);
   }
   try {
     return JSON.parse(fs.readFileSync(usersPath, 'utf8'));
   } catch {
-    console.error('[DB] users.json corrompido, recriando');
     fs.writeFileSync(usersPath, '{}', 'utf8');
     return {};
   }
@@ -39,9 +37,6 @@ function loadUsers() {
 function saveUsers(db) {
   const json = JSON.stringify(db, null, 2);
   fs.writeFileSync(usersPath, json, 'utf8');
-  const check = fs.readFileSync(usersPath, 'utf8');
-  if (check !== json) throw new Error('Falha na gravação do users.json');
-  console.log('[DB] users.json salvo e verificado');
 }
 
 app.get('/api/status', (req, res) => {
@@ -121,10 +116,7 @@ app.post('/api/chat', async (req, res) => {
 
   const premium = Date.now() < u.premium;
 
-  console.log(`[CHAT] user=${userId} free=${u.free} premium=${premium}`);
-
   if (!premium && u.free <= 0) {
-    console.log(`[CHAT] BLOQUEADO — ${userId} atingiu o limite`);
     return res.status(402).json({ error: 'Suas mensagens gratuitas de hoje acabaram.' });
   }
 
@@ -140,7 +132,6 @@ app.post('/api/chat', async (req, res) => {
   let system = '';
   try { system = fs.readFileSync(promptFile, 'utf8').trim(); } catch {
     try { system = fs.readFileSync(systemPath, 'utf8').trim(); } catch {}
-    if (!system) console.warn('⚠ Nenhum system prompt encontrado');
   }
 
   const full = system ? [{ role: 'system', content: system }, ...messages] : messages;
@@ -150,22 +141,29 @@ app.post('/api/chat', async (req, res) => {
   res.setHeader('Connection', 'keep-alive');
   res.flushHeaders?.();
 
+  const ctrl = new AbortController();
+  const timeout = setTimeout(() => ctrl.abort(), 90000);
+
   try {
     const r = await fetch(MISTRAL_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + KEY },
-      body: JSON.stringify({ model: MODEL, messages: full, temperature: 0.95, max_tokens: 1400, stream: true })
+      body: JSON.stringify({ model: MODEL, messages: full, temperature: 0.95, max_tokens: 1400, stream: true }),
+      signal: ctrl.signal
     });
+
+    clearTimeout(timeout);
 
     if (!r.ok) {
       const t = await r.text();
-      console.error('Erro da API Mistral:', t);
-      res.write(`data: ${JSON.stringify({ error: 'Mistral: ' + t.slice(0, 180) })}\n\n`);
+      console.error('[MISTRAL] Erro:', r.status, t.slice(0, 300));
+      res.write(`data: ${JSON.stringify({ error: 'Erro na IA (' + r.status + ')' })}\n\n`);
       return res.end();
     }
 
     const reader = r.body.getReader();
     req.on('close', () => reader.cancel().catch(() => {}));
+
     for (;;) {
       const { done, value } = await reader.read();
       if (done) break;
@@ -173,8 +171,9 @@ app.post('/api/chat', async (req, res) => {
     }
     res.end();
   } catch (e) {
-    console.error('Erro no stream:', e.message);
-    res.write(`data: ${JSON.stringify({ error: e.message })}\n\n`);
+    clearTimeout(timeout);
+    console.error('[MISTRAL] Falha:', e.name === 'AbortError' ? 'TIMEOUT 90s' : e.message);
+    res.write(`data: ${JSON.stringify({ error: e.name === 'AbortError' ? 'A IA demorou demais, tenta de novo' : e.message })}\n\n`);
     res.end();
   }
 });
@@ -182,8 +181,8 @@ app.post('/api/chat', async (req, res) => {
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log('\n  BLUX +18 → http://localhost:' + PORT);
-  console.log('  ✓ Mistral:', KEY ? 'OK (' + KEY.slice(0, 6) + '...)' : 'AUSENTE');
-  console.log('  ✓ Mercado Pago:', MP_TOKEN ? 'OK' : 'AUSENTE');
-  console.log('  ✓ Mensagens grátis/dia:', FREE_MSGS);
-  console.log('  ✓ users.json em:', usersPath, '\n');
+  console.log('  Mistral:', KEY ? 'OK' : 'AUSENTE');
+  console.log('  Mercado Pago:', MP_TOKEN ? 'OK' : 'AUSENTE');
+  console.log('  Msgs grátis/dia:', FREE_MSGS);
+  console.log('  users.json:', usersPath, '\n');
 });
