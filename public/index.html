@@ -244,37 +244,49 @@ header{display:flex;align-items:center;gap:10px;padding:12px 16px;border-bottom:
 
 <script>
 const $=s=>document.querySelector(s),$$=s=>document.querySelectorAll(s);
+
+// STORE COM PROTEÇÃO ROBUSTA
 const store={
   get:(k,d)=>{try{const v=JSON.parse(localStorage.getItem('blux_'+k));return v==null?d:v}catch{return d}},
-  set:(k,v)=>localStorage.setItem('blux_'+k,JSON.stringify(v)),
+  set:(k,v)=>{
+    try{
+      localStorage.setItem('blux_'+k,JSON.stringify(v));
+      return true;
+    }catch(e){
+      console.error('Erro ao salvar em '+k+':',e);
+      if(k==='chats'&&Array.isArray(v)){
+        try{
+          const semImagens=v.map(c=>({
+            ...c,
+            messages:c.messages.map(m=>{
+              const{image,...rest}=m;
+              return rest;
+            })
+          }));
+          localStorage.setItem('blux_'+k,JSON.stringify(semImagens));
+          toast('Histórico salvo sem imagens (limite atingido)');
+          return true;
+        }catch(e2){
+          console.error('Falhou mesmo sem imagens:',e2);
+          return false;
+        }
+      }
+      return false;
+    }
+  },
   del:(k)=>localStorage.removeItem('blux_'+k)
 };
-const DIA=864e5;
 
+const DIA=864e5;
 const IMG = {
   F: 'https://i.ibb.co/BVhJTHdt/1004005077.jpg',
   M: 'https://i.ibb.co/FkQbkMG9/1004005079.jpg'
 };
 const LABEL = { F: 'Feminino', M: 'Masculino' };
 
-// ── Frases in-character para erros (a IA "fala" em vez de mostrar erro técnico) ──
 const FRASES_ERRO = {
-  F: [
-    "Ai, deu um probleminha aqui... me manda de novo? 🥺",
-    "Ops, minha conexão falhou. Tenta outra vez, amor?",
-    "Não consegui te responder agora... tenta mais uma vez, vai? 💕",
-    "Hmm, deu ruim do meu lado. Me manda de novo que já já a gente continua.",
-    "Opa, alguma coisa deu errado aqui. Tenta me mandar de novo?",
-    "Ih, travou do meu lado... me manda outra vez, tá?"
-  ],
-  M: [
-    "Eita, deu ruim aqui... manda de novo? 🔧",
-    "Ops, minha conexão falhou. Tenta outra vez, beleza?",
-    "Não consegui te responder agora... tenta mais uma vez, vai?",
-    "Hmm, deu B.O. do meu lado. Manda de novo que já já a gente continua.",
-    "Opa, alguma coisa deu errado aqui. Tenta me mandar de novo?",
-    "Ih, travou aqui... me manda outra vez, tá?"
-  ]
+  F: ["Ai, deu um probleminha aqui... me manda de novo? 🥺","Ops, minha conexão falhou. Tenta outra vez, amor?","Não consegui te responder agora... tenta mais uma vez, vai? 💕"],
+  M: ["Eita, deu ruim aqui... manda de novo? 🔧","Ops, minha conexão falhou. Tenta outra vez, beleza?","Não consegui te responder agora... tenta mais uma vez, vai?"]
 };
 const FRASES_INT = {
   F: ["Ei, você me cortou no meio! 😅 Quer que eu continue?"],
@@ -287,6 +299,7 @@ const SVG={
   copy:'<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg>',
   regen:'<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 12a9 9 0 1 1-2.6-6.4M21 3v6h-6"/></svg>'
 };
+
 const S={chats:store.get('chats',[]),cur:null,streaming:false,abort:null,pendingImage:null};
 
 function toast(t,err=false){
@@ -384,11 +397,7 @@ $$('.gp-card').forEach(btn=>{
   btn.addEventListener('click',()=>{
     const g=btn.dataset.gender;
     store.set('genero',g);
-    store.set('recarga',{
-      codigo:pin,
-      dias:window._pendDias||1,
-      ativadoEm:Date.now()
-    });
+    store.set('recarga',{codigo:pin,dias:window._pendDias||1,ativadoEm:Date.now()});
     entrarApp();
   });
 });
@@ -429,7 +438,7 @@ function buildNode(m,last){
     html+='</div>';
     d.innerHTML=html;
     const img=d.querySelector('.msg-img');
-    if(img) img.onclick=()=>openImgModal(img.src);
+    if(img)img.onclick=()=>openImgModal(img.src);
     return d;
   }
   d.className='msg assistant';
@@ -467,31 +476,65 @@ function renderAll(){
   wrap.scrollTop=wrap.scrollHeight;
 }
 
+// FUNÇÃO SEND COM PROTEÇÃO TOTAL
 async function send(t){
-  t=(t||'').trim();
-  const hasImage=S.pendingImage;
-  if((!t&&!hasImage)||S.streaming)return;
-  if(diasRest()<=0){lockout('Sua recarga expirou — insira um novo código.');return}
-  ensureChat();
-  const c=cur();
-  const msgData={role:'user',content:t};
-  if(hasImage) msgData.image=S.pendingImage;
-  c.messages.push(msgData);
-  c.ts=Date.now();
-  if(c.title==='Nova conversa')c.title=(t||'Imagem').slice(0,38)+((t||'Imagem').length>38?'…':'');
-  saveChats();renderHist();
-  $('#empty').classList.add('hidden');
-  $('#msgs').appendChild(buildNode(msgData));
-  $('#ta').value='';
-  S.pendingImage=null;
-  $('#imgPreviewContainer').classList.add('hidden');
-  autoTa();wrap.scrollTop=wrap.scrollHeight;
-  await stream();
+  console.log('send() chamado com:', {t, pendingImage: !!S.pendingImage, streaming: S.streaming});
+  
+  try{
+    t=(t||'').trim();
+    const hasImage=!!S.pendingImage;
+    
+    console.log('Validações:', {hasText: !!t, hasImage, streaming: S.streaming});
+    
+    if((!t&&!hasImage)||S.streaming){
+      console.log('Retornando early - sem conteúdo ou streaming');
+      return;
+    }
+    
+    if(diasRest()<=0){
+      lockout('Sua recarga expirou — insira um novo código.');
+      return;
+    }
+    
+    ensureChat();
+    const c=cur();
+    const msgData={role:'user',content:t};
+    if(hasImage){
+      msgData.image=S.pendingImage;
+      console.log('Imagem anexada ao msgData, tamanho:', S.pendingImage.length);
+    }
+    
+    c.messages.push(msgData);
+    c.ts=Date.now();
+    if(c.title==='Nova conversa')c.title=(t||'Imagem').slice(0,38)+((t||'Imagem').length>38?'…':'');
+    
+    console.log('Salvando chats...');
+    const saved = saveChats();
+    if(!saved){
+      toast('Erro ao salvar no histórico', true);
+    }
+    
+    renderHist();
+    $('#empty').classList.add('hidden');
+    
+    console.log('Adicionando nó ao DOM...');
+    $('#msgs').appendChild(buildNode(msgData));
+    
+    $('#ta').value='';
+    S.pendingImage=null;
+    $('#imgPreviewContainer').classList.add('hidden');
+    autoTa();
+    wrap.scrollTop=wrap.scrollHeight;
+    
+    console.log('Iniciando stream...');
+    await stream();
+    
+  }catch(err){
+    console.error('ERRO NO send():', err);
+    toast('Erro ao enviar: ' + err.message, true);
+  }
 }
 
-// ════════════════════════════════════════════════════════
-// STREAM — agora erros aparecem como fala do personagem
-// ════════════════════════════════════════════════════════
 async function stream(){
   const c=cur(),m={role:'assistant',content:'',pending:true};
   c.messages.push(m);
@@ -515,20 +558,16 @@ async function stream(){
   });
 
   const gender=genero()||'F';
-
-  // Pega uma frase aleatória da lista do gênero
   const pegarFrase = (lista) => {
     const arr = lista[gender] || lista.F;
     return arr[Math.floor(Math.random() * arr.length)];
   };
 
-  // Escreve a frase como conteúdo da mensagem da IA
   const aplicarFrase = (tipo='erro') => {
     const frase = tipo === 'int' ? pegarFrase(FRASES_INT) : pegarFrase(FRASES_ERRO);
     if(!m.content || m.pending){
       m.content = frase;
     } else {
-      // Se já tinha começado a responder, adiciona a frase em itálico
       m.content += '\n\n*' + frase + '*';
     }
     m.pending = false;
@@ -544,7 +583,7 @@ async function stream(){
     });
 
     if(!r.ok){
-      // Erro HTTP (401, 500, etc) → fala do personagem
+      console.error('Resposta não OK:', r.status, r.statusText);
       aplicarFrase('erro');
       m.pending=false;S.streaming=false;S.abort=null;uiStream();
       saveChats();renderHist();renderAll();
@@ -566,7 +605,10 @@ async function stream(){
         const d=L.slice(5).trim();
         if(!d||d==='[DONE]')continue;
         let j;try{j=JSON.parse(d)}catch{continue}
-        if(j.error){teveErroApi=true;continue}
+        if(j.error){
+          console.error('Erro da API:', j.error);
+          teveErroApi=true;continue;
+        }
         const tk=j.choices?.[0]?.delta?.content;
         if(tk){
           if(m.pending){m.pending=false;el.innerHTML=''}
@@ -576,21 +618,18 @@ async function stream(){
         }
       }
     }
-    // Se a API mandou erro e a IA ainda não tinha respondido nada
     if(teveErroApi && !m.content){
       aplicarFrase('erro');
     }
   }catch(e){
+    console.error('Erro no stream:', e);
     if(e.name==='AbortError'){
-      // Usuário clicou em parar → frase de interrupção
       aplicarFrase('int');
     } else {
-      // Qualquer outro erro (rede, timeout, DNS...) → frase genérica
       aplicarFrase('erro');
     }
   }
   m.pending=false;S.streaming=false;S.abort=null;uiStream();
-  // Se por algum motivo ainda não tem conteúdo, remove a mensagem vazia
   if(!m.content)c.messages.pop();
   saveChats();renderHist();renderAll();
 }
@@ -619,11 +658,17 @@ ta.addEventListener('keydown',e=>{
 $('#send').onclick=()=>{S.streaming?S.abort?.abort():send(ta.value)};
 $$('#chips .chip').forEach(c=>c.onclick=()=>send(c.textContent));
 
-// ── Upload de Imagem ──
-$('#imgBtn').onclick=()=>$('#imgInput').click();
+// Upload de Imagem
+$('#imgBtn').onclick=()=>{
+  console.log('Clicou no botão de imagem');
+  $('#imgInput').click();
+};
+
 $('#imgInput').onchange=(e)=>{
+  console.log('Arquivo selecionado:', e.target.files[0]);
   const file=e.target.files[0];
   if(!file)return;
+  
   if(file.size>10*1024*1024){
     toast('Imagem muito grande (máx 10MB)',true);
     e.target.value='';
@@ -634,11 +679,18 @@ $('#imgInput').onchange=(e)=>{
     e.target.value='';
     return;
   }
+  
   const reader=new FileReader();
   reader.onload=(ev)=>{
+    console.log('Imagem carregada, tamanho base64:', ev.target.result.length);
     S.pendingImage=ev.target.result;
     $('#imgPreview').src=ev.target.result;
     $('#imgPreviewContainer').classList.remove('hidden');
+    console.log('Preview visível, S.pendingImage setado');
+  };
+  reader.onerror=(err)=>{
+    console.error('Erro ao ler arquivo:', err);
+    toast('Erro ao ler imagem', true);
   };
   reader.readAsDataURL(file);
   e.target.value='';
@@ -683,6 +735,9 @@ const h=new Date().getHours();
 $('#greet').textContent=(h<6?'Boa madrugada':h<12?'Bom dia':h<18?'Boa tarde':'Boa noite')+'…';
 ta.placeholder=['Diga algo no meu ouvido…','O que vamos aprontar hoje?','Sem vergonha aqui…'][Math.floor(Math.random()*3)];
 boot();
+
+// ADICIONAR DEBUG NO CONSOLE
+console.log('BLUX carregado. Abra o Console (F12) para ver logs de debug.');
 </script>
 </body>
           </html>
