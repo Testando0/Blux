@@ -1,26 +1,22 @@
-import express from 'express';
-import dotenv from 'dotenv';
-import fs from 'node:fs';
-import path from 'node:path';
-import { fileURLToPath } from 'node:url';
-
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
-dotenv.config({ path: path.join(__dirname, '.env') });
-
-const KEY = (process.env.MISTRAL_API_KEY || '').trim().replace(/^['"]+|['"]+$/g, '');
-const MP_TOKEN = (process.env.MP_ACCESS_TOKEN || '').trim();
-const MODEL = 'pixtral-12b-2409';
-const MISTRAL_URL = 'https://api.mistral.ai/v1/chat/completions';
-const FREE_MSGS = 15;
-const DAY = 864e5;
-
-const systemPath = path.join(__dirname, 'system.txt');
-const system2Path = path.join(__dirname, 'system2.txt');
-const usersPath = path.join(__dirname, 'users.json');
+const express = require('express');
+const cors = require('cors');
+const fs = require('fs');
+const path = require('path');
+require('dotenv').config();
 
 const app = express();
-app.use(express.json({ limit: '50mb' }));
+app.use(cors());
+app.use(express.json({ limit: '10mb' }));
 app.use(express.static(path.join(__dirname, 'public')));
+
+const PORT = process.env.PORT || 3000;
+const KEY = process.env.MISTRAL_API_KEY;
+const MISTRAL_URL = 'https://api.mistral.ai/v1/chat/completions';
+const MODEL = 'pixtral-12b-2409';
+
+const FREE_MSGS = 15;
+const DAY = 864e5;
+const usersPath = path.join(__dirname, 'users.json');
 
 function loadUsers() {
   if (!fs.existsSync(usersPath)) {
@@ -38,65 +34,6 @@ function saveUsers(db) {
   const json = JSON.stringify(db, null, 2);
   fs.writeFileSync(usersPath, json, 'utf8');
 }
-
-app.get('/api/status', (req, res) => {
-  const userId = String(req.query.userId || '').trim();
-  if (!userId) return res.status(400).json({ error: 'userId obrigatório' });
-  const db = loadUsers();
-  let u = db[userId] || { free: FREE_MSGS, reset: Date.now(), premium: 0 };
-  if (Date.now() - u.reset > DAY) {
-    u.free = FREE_MSGS;
-    u.reset = Date.now();
-    db[userId] = u;
-    saveUsers(db);
-  }
-  res.json({ free: u.free, premium: Date.now() < u.premium });
-});
-
-app.post('/api/pay', async (req, res) => {
-  const userId = String(req.body?.userId || '').trim();
-  if (!userId) return res.status(400).json({ error: 'userId obrigatório' });
-  try {
-    const r = await fetch('https://api.mercadopago.com/checkout/preferences', {
-      method: 'POST',
-      headers: { Authorization: `Bearer ${MP_TOKEN}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        items: [{ title: 'Blux Premium 30 dias', quantity: 1, unit_price: 9.9, currency_id: 'BRL' }],
-        external_reference: userId,
-        back_urls: {
-          success: `${req.protocol}://${req.get('host')}/`,
-          failure: `${req.protocol}://${req.get('host')}/`,
-          pending: `${req.protocol}://${req.get('host')}/`
-        },
-        auto_return: 'approved'
-      })
-    });
-    const d = await r.json();
-    if (!r.ok) return res.status(500).json({ error: d.message || 'Erro MP' });
-    res.json({ url: d.init_point });
-  } catch (e) { res.status(500).json({ error: e.message }); }
-});
-
-app.post('/api/webhook', async (req, res) => {
-  const id = req.query.id || req.body?.data?.id;
-  if (id) {
-    try {
-      const r = await fetch(`https://api.mercadopago.com/v1/payments/${id}`, {
-        headers: { Authorization: `Bearer ${MP_TOKEN}` }
-      });
-      const p = await r.json();
-      if (p.status === 'approved' && p.external_reference) {
-        const db = loadUsers();
-        const u = db[p.external_reference] || { free: FREE_MSGS, reset: Date.now(), premium: 0 };
-        u.premium = Date.now() + 30 * DAY;
-        db[p.external_reference] = u;
-        saveUsers(db);
-        console.log('[MP] Premium ativado:', p.external_reference);
-      }
-    } catch (e) { console.error('[MP]', e.message); }
-  }
-  res.sendStatus(200);
-});
 
 app.post('/api/chat', async (req, res) => {
   const { messages, gender } = req.body || {};
@@ -127,12 +64,11 @@ app.post('/api/chat', async (req, res) => {
     console.log(`[CHAT] user=${userId} restante=${u.free}`);
   }
 
-  const isFemale = String(gender || '').toUpperCase() === 'F';
-  const promptFile = isFemale ? system2Path : systemPath;
+  const systemFile = gender === 'M' ? 'system2.txt' : 'system.txt';
   let system = '';
-  try { system = fs.readFileSync(promptFile, 'utf8').trim(); } catch {
-    try { system = fs.readFileSync(systemPath, 'utf8').trim(); } catch {}
-  }
+  try {
+    system = fs.readFileSync(path.join(__dirname, systemFile), 'utf8').trim();
+  } catch {}
 
   const full = system ? [{ role: 'system', content: system }, ...messages] : messages;
 
@@ -178,11 +114,48 @@ app.post('/api/chat', async (req, res) => {
   }
 });
 
-const PORT = process.env.PORT || 3000;
+app.get('/api/status', (req, res) => {
+  const userId = String(req.query.userId || '').trim();
+  if (!userId) return res.status(400).json({ error: 'userId obrigatório' });
+  const db = loadUsers();
+  let u = db[userId] || { free: FREE_MSGS, reset: Date.now(), premium: 0 };
+  if (Date.now() - u.reset > DAY) {
+    u.free = FREE_MSGS;
+    u.reset = Date.now();
+    db[userId] = u;
+    saveUsers(db);
+  }
+  res.json({ free: u.free, premium: Date.now() < u.premium });
+});
+
+app.post('/api/activate', (req, res) => {
+  const { userId, code } = req.body || {};
+  const uid = String(userId || '').trim();
+  const cod = String(code || '').trim().toUpperCase();
+  if (!uid || !cod) return res.status(400).json({ error: 'userId e code obrigatórios' });
+
+  let codes = {};
+  try { codes = JSON.parse(fs.readFileSync(path.join(__dirname, 'codigos.json'), 'utf8')); } catch {}
+
+  const cfg = codes[cod];
+  if (!cfg) return res.status(404).json({ error: 'Código inválido' });
+  if (cfg.usado) return res.status(400).json({ error: 'Código já utilizado' });
+
+  const dias = Number(cfg.dias) || 30;
+  const db = loadUsers();
+  let u = db[uid] || { free: FREE_MSGS, reset: Date.now(), premium: 0 };
+  const base = Math.max(u.premium, Date.now());
+  u.premium = base + dias * DAY;
+  db[uid] = u;
+  saveUsers(db);
+
+  codes[cod].usado = true;
+  fs.writeFileSync(path.join(__dirname, 'codigos.json'), JSON.stringify(codes, null, 2), 'utf8');
+
+  console.log(`[PREMIUM] user=${uid} código=${cod} dias=${dias}`);
+  res.json({ ok: true, premiumUntil: u.premium });
+});
+
 app.listen(PORT, () => {
-  console.log('\n  BLUX +18 → http://localhost:' + PORT);
-  console.log('  Mistral:', KEY ? 'OK' : 'AUSENTE');
-  console.log('  Mercado Pago:', MP_TOKEN ? 'OK' : 'AUSENTE');
-  console.log('  Msgs grátis/dia:', FREE_MSGS);
-  console.log('  users.json:', usersPath, '\n');
+  console.log(`Blux online na porta ${PORT}`);
 });
