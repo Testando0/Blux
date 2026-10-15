@@ -9,14 +9,41 @@ app.use(cors());
 app.use(express.json({ limit: '10mb' }));
 app.use(express.static(path.join(__dirname, 'public')));
 
-const PORT = process.env.PORT || 3000;
 const KEY = process.env.MISTRAL_API_KEY;
 const MISTRAL_URL = 'https://api.mistral.ai/v1/chat/completions';
 const MODEL = 'pixtral-12b-2409';
 
 const FREE_MSGS = 15;
 const DAY = 864e5;
-const usersPath = path.join(__dirname, 'users.json');
+
+// NO VERCEL: Grava em /tmp. NO SEU PC: Grava na pasta atual.
+const tmpDir = process.env.NODE_ENV === 'production' ? '/tmp' : __dirname;
+const usersPath = path.join(tmpDir, 'users.json');
+const codigosPath = path.join(tmpDir, 'codigos.json');
+
+// Função auxiliar para carregar códigos e garantir que o arquivo original seja copiado para /tmp na primeira execução
+function loadCodes() {
+  if (!fs.existsSync(codigosPath)) {
+    try {
+      const originalCodes = fs.readFileSync(path.join(__dirname, 'codigos.json'), 'utf8');
+      fs.writeFileSync(codigosPath, originalCodes, 'utf8');
+      return JSON.parse(originalCodes);
+    } catch {
+      fs.writeFileSync(codigosPath, '{}', 'utf8');
+      return {};
+    }
+  }
+  try {
+    return JSON.parse(fs.readFileSync(codigosPath, 'utf8'));
+  } catch {
+    fs.writeFileSync(codigosPath, '{}', 'utf8');
+    return {};
+  }
+}
+
+function saveCodes(db) {
+  fs.writeFileSync(codigosPath, JSON.stringify(db, null, 2), 'utf8');
+}
 
 function loadUsers() {
   if (!fs.existsSync(usersPath)) {
@@ -134,8 +161,7 @@ app.post('/api/activate', (req, res) => {
   const cod = String(code || '').trim().toUpperCase();
   if (!uid || !cod) return res.status(400).json({ error: 'userId e code obrigatórios' });
 
-  let codes = {};
-  try { codes = JSON.parse(fs.readFileSync(path.join(__dirname, 'codigos.json'), 'utf8')); } catch {}
+  let codes = loadCodes();
 
   const cfg = codes[cod];
   if (!cfg) return res.status(404).json({ error: 'Código inválido' });
@@ -150,12 +176,18 @@ app.post('/api/activate', (req, res) => {
   saveUsers(db);
 
   codes[cod].usado = true;
-  fs.writeFileSync(path.join(__dirname, 'codigos.json'), JSON.stringify(codes, null, 2), 'utf8');
+  saveCodes(codes);
 
   console.log(`[PREMIUM] user=${uid} código=${cod} dias=${dias}`);
   res.json({ ok: true, premiumUntil: u.premium });
 });
 
-app.listen(PORT, () => {
-  console.log(`Blux online na porta ${PORT}`);
-});
+// Apenas escuta a porta localmente. No Vercel, o app é exportado.
+if (process.env.NODE_ENV !== 'production') {
+  const PORT = process.env.PORT || 3000;
+  app.listen(PORT, () => {
+    console.log(`Blux online na porta ${PORT}`);
+  });
+}
+
+module.exports = app;
