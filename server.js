@@ -1,13 +1,26 @@
-const express = require('express');
-const cors = require('cors');
-const fs = require('fs');
-const path = require('path');
-require('dotenv').config();
+import express from 'express';
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
+import dotenv from 'dotenv';
+
+dotenv.config();
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 const app = express();
-app.use(cors());
 app.use(express.json({ limit: '10mb' }));
 app.use(express.static(path.join(__dirname, 'public')));
+
+// CORS manual para não precisar instalar dependências extras
+app.use((req, res, next) => {
+  res.header('Access-Control-Allow-Origin', '*');
+  res.header('Access-Control-Allow-Methods', 'GET,POST,OPTIONS');
+  res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+  if (req.method === 'OPTIONS') return res.sendStatus(200);
+  next();
+});
 
 const KEY = process.env.MISTRAL_API_KEY;
 const MISTRAL_URL = 'https://api.mistral.ai/v1/chat/completions';
@@ -16,12 +29,11 @@ const MODEL = 'pixtral-12b-2409';
 const FREE_MSGS = 15;
 const DAY = 864e5;
 
-// NO VERCEL: Grava em /tmp. NO SEU PC: Grava na pasta atual.
+// No Vercel, __dirname aponta para /var/task/
 const tmpDir = process.env.NODE_ENV === 'production' ? '/tmp' : __dirname;
 const usersPath = path.join(tmpDir, 'users.json');
 const codigosPath = path.join(tmpDir, 'codigos.json');
 
-// Função auxiliar para carregar códigos e garantir que o arquivo original seja copiado para /tmp na primeira execução
 function loadCodes() {
   if (!fs.existsSync(codigosPath)) {
     try {
@@ -102,7 +114,8 @@ app.post('/api/chat', async (req, res) => {
   res.setHeader('Content-Type', 'text/event-stream; charset=utf-8');
   res.setHeader('Cache-Control', 'no-cache');
   res.setHeader('Connection', 'keep-alive');
-  res.flushHeaders?.();
+  
+  if (res.flushHeaders) res.flushHeaders();
 
   const ctrl = new AbortController();
   const timeout = setTimeout(() => ctrl.abort(), 90000);
@@ -136,7 +149,7 @@ app.post('/api/chat', async (req, res) => {
   } catch (e) {
     clearTimeout(timeout);
     console.error('[MISTRAL] Falha:', e.name === 'AbortError' ? 'TIMEOUT 90s' : e.message);
-    res.write(`data: ${JSON.stringify({ error: e.name === 'AbortError' ? 'A IA demorou demais, tenta de novo' : e.message })}\n\n`);
+    res.write(`data: ${JSON.stringify({ error: e.name === 'AbortError' ? 'A IA demorou demais' : e.message })}\n\n`);
     res.end();
   }
 });
@@ -182,7 +195,6 @@ app.post('/api/activate', (req, res) => {
   res.json({ ok: true, premiumUntil: u.premium });
 });
 
-// Apenas escuta a porta localmente. No Vercel, o app é exportado.
 if (process.env.NODE_ENV !== 'production') {
   const PORT = process.env.PORT || 3000;
   app.listen(PORT, () => {
@@ -190,4 +202,4 @@ if (process.env.NODE_ENV !== 'production') {
   });
 }
 
-module.exports = app;
+export default app;
